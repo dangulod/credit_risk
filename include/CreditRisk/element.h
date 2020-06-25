@@ -1,0 +1,88 @@
+#ifndef ELEMENT_H
+#define ELEMENT_H
+
+#include <string>
+#include "equation.h"
+
+using std::string;
+
+namespace CreditRisk
+{
+    class Credit_param
+    {
+    public:
+        unsigned long n;
+        double ead, pd_b, pd, lgd, lgd_addon, beta, idio, _npd, _le;
+        double spread_old, spread_new;
+
+        Credit_param() = delete;
+        Credit_param(unsigned long n, double ead, double pd_b, double pd, double lgd, double lgd_addon, double beta);
+        Credit_param(unsigned long n, double ead, double pd_b, double pd, double lgd, double lgd_addon, double beta, double spread_old, double spread_new);
+        Credit_param(const Credit_param & value) = delete;
+        Credit_param(Credit_param && value) = default;
+        ~Credit_param() = default;
+    };
+
+    class Element : public Credit_param
+    {
+    public:
+        enum class Treatment{
+            Wholesale = 0,
+            Retail    = 1
+        };
+
+        unsigned long ru;
+        Treatment mr;
+        CreditRisk::Equation equ;
+
+        Element() = delete;
+        Element(unsigned long ru, unsigned long n, double ead, double pd_b, double pd, double lgd,
+                double lgd_addon, double beta, Treatment mr, CreditRisk::Equation equ);
+        Element(unsigned long ru, unsigned long n, double ead, double pd_b, double pd, double lgd,
+                double lgd_addon, double beta, double spread_new, double spread_old,
+                Treatment mr, CreditRisk::Equation equ);
+        Element(const Element & value) = delete;
+        Element(Element && value) = default;
+        ~Element() = default;
+
+        std::string getTreatment();
+        void setTreatment(std::string value);
+
+        void setN(unsigned long value);
+        void setLgd(double value);
+        void setLgdAddon(double value);
+        void setEad(double value);
+        void setPD(double value);
+        void setPD_B(double value);
+        void setBeta(double value);
+
+        pt::ptree to_ptree();
+        static Element from_ptree(pt::ptree & value);
+
+        double pd_c(double t, double cwi);
+        double pd_c(double cwi);
+        double el();
+        double getT(double cwi);
+
+        double loss(double t, arma::vec f, unsigned long id);
+        double loss(double t, arma::vec f, double idio);
+        double loss(double t, double cwi);
+
+        double loss(double t, arma::vec cwi, arma::vec v_t, size_t id_t);
+
+        double loss(arma::vec f, unsigned long id);
+        double loss(arma::vec f, double idio);
+        double loss(double cwi);
+
+        double num(double s, double pd_c);
+        double den(double s, double pd_c);
+
+        double K (double s, double pd_c);
+        double K1(double s, double pd_c);
+        double K2(double s, double pd_c);
+
+        double EVA(double eadxlgd, double CeR, double cti, double rf, double tax, double hr);
+
+    };
+}
+#endif // ELEMENT_H
