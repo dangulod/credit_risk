@@ -31,8 +31,12 @@ namespace CreditRisk
             }
             return ii;
         }
+        double mean(const arma::vec & x);
 
         double quantile(arma::vec x, double q);
+        arma::vec contributions(const arma::mat & x, double q, double lower, double upper);
+
+        arma::vec rowSum(const arma::mat & x);
     }
 
     namespace saddle {

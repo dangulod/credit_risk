@@ -479,6 +479,38 @@ arma::vec Credit_portfolio::get_Ns()
     return vec;
 }
 
+arma::vec Credit_portfolio::get_ru_el()
+{
+    arma::vec el(this->rus.size(), arma::fill::zeros);
+
+    size_t ii = 0;
+
+    for (auto & jj: *this)
+    {
+        for (auto & kk: *jj)
+        {
+            el[this->rus_pos.at(ii)] += kk.el();
+            ii++;
+        }
+    }
+
+    return el;
+}
+
+arma::vec Credit_portfolio::get_ru_allocation(const arma::vec & contrib)
+{
+    arma::vec ru_alloc(rus.size(), arma::fill::zeros);
+    size_t hh = 0;
+
+    for (auto & ii: contrib)
+    {
+        ru_alloc.at(this->rus_pos.at(hh)) += ii;
+        hh++;
+    }
+
+    return ru_alloc;
+}
+
 arma::vec Credit_portfolio::v_rand(unsigned long seed)
 {
     return this->cf.vs * CreditRisk::Utils::randn_v(this->n_factors(), seed);
@@ -493,20 +525,20 @@ void Credit_portfolio::pv_rand(arma::mat *r, size_t n, unsigned long seed, size_
     }
 }
 
-arma::mat Credit_portfolio::m_rand(size_t n, unsigned long seed, size_t p)
+arma::mat Credit_portfolio::m_rand(size_t n, unsigned long seed, TP::ThreadPool * pool)
 {
     arma::mat ale   = arma::zeros(n, this->n_factors());
 
-    vector<std::thread> threads(p);
+    vector<std::future<void>> futures(pool->size());
 
-    for (unsigned long ii = 0; ii < p; ii++)
+    for (unsigned long ii = 0; ii < pool->size(); ii++)
     {
-        threads[ii] = std::thread(&Credit_portfolio::pv_rand, this, &ale, n, seed, ii, p);
+        futures.at(ii) = pool->post(&Credit_portfolio::pv_rand, this, &ale, n, seed, ii, pool->size());
     }
 
-    for (unsigned long ii = 0; ii < p; ii++)
+    for (auto & ii: futures)
     {
-        threads[ii].join();
+        ii.get();
     }
 
     return ale;
@@ -547,20 +579,20 @@ arma::vec Credit_portfolio::v_idio(size_t id)
     return l;
 }
 
-arma::mat Credit_portfolio::getIdio(size_t n, size_t p)
+arma::mat Credit_portfolio::getIdio(size_t n, TP::ThreadPool * pool)
 {
     arma::mat m(n, this->getN());
 
-    vector<std::thread> threads(p);
+    vector<std::future<void>> futures(pool->size());
 
-    for (size_t ii = 0; ii < p; ii++)
+    for (size_t ii = 0; ii < pool->size(); ii++)
     {
-        threads[ii] = std::thread(&Credit_portfolio::pmIdio, this, &m, n, ii, p);
+        futures.at(ii) = pool->post(&Credit_portfolio::pmIdio, this, &m, n, ii, pool->size());
     }
 
-    for (auto & ii: threads)
+    for (auto & ii: futures)
     {
-        ii.join();
+        ii.get();
     }
 
     return m;
@@ -637,13 +669,7 @@ size_t Credit_portfolio::which_portfolio(size_t column)
 
         if (column < this->at(ii)->size() + jj)
         {
-            if (dynamic_cast<Fund*>(this->at(ii).get()) != nullptr)
-            {
-                return kk;
-            } else
-            {
-                return -1;
-            }
+            return kk;
         } else
         {
             jj += this->at(ii)->size();
@@ -687,13 +713,20 @@ arma::vec Credit_portfolio::getCWI(unsigned long seed, unsigned long idio_id)
 }
 
 
-arma::mat Credit_portfolio::getCWIs(size_t n, unsigned long seed, size_t p)
+arma::mat Credit_portfolio::getCWIs(size_t n, unsigned long seed, TP::ThreadPool * pool)
 {
     arma::mat l(n, this->getN());
-    vector<std::thread> threads(p);
+    vector<std::future<void>> futures(pool->size());
 
-    for (size_t ii = 0; ii < p; ii++) threads[ii] = std::thread(&Credit_portfolio::pmCWI, this, &l, n, seed, ii, p);
-    for (auto & ii: threads) ii.join();
+    for (size_t ii = 0; ii < pool->size(); ii++)
+    {
+        futures.at(ii) = pool->post(&Credit_portfolio::pmCWI, this, &l, n, seed, ii, pool->size());
+    }
+
+    for (auto & ii: futures)
+    {
+        ii.get();
+    }
 
     return l;
 }
@@ -876,20 +909,20 @@ double Credit_portfolio::smargin_loss_without_secur(size_t row, size_t column, s
     return 0;
 }
 
-arma::mat Credit_portfolio::margin_loss(size_t n, unsigned long seed, size_t p)
+arma::mat Credit_portfolio::margin_loss(size_t n, unsigned long seed, TP::ThreadPool * pool)
 {
     arma::mat l(n, this->getN());
 
-    vector<std::thread> threads(p);
+    vector<std::future<void>> futures(pool->size());
 
-    for (size_t ii = 0; ii < p; ii++)
+    for (size_t ii = 0; ii < pool->size(); ii++)
     {
-        threads[ii] = std::thread(&Credit_portfolio::pmloss, this, &l, n, seed, ii, p);
+        futures.at(ii) = pool->post(&Credit_portfolio::pmloss, this, &l, n, seed, ii, pool->size());
     }
 
-    for (auto & ii: threads)
+    for (auto & ii: futures)
     {
-        ii.join();
+        ii.get();
     }
 
     return l;
@@ -928,20 +961,20 @@ void Credit_portfolio::pmloss_without_secur(arma::mat *l, size_t n, unsigned lon
     }
 }
 
-arma::mat Credit_portfolio::margin_loss_without_secur(size_t n, unsigned long seed, size_t p)
+arma::mat Credit_portfolio::margin_loss_without_secur(size_t n, unsigned long seed, TP::ThreadPool * pool)
 {
     arma::mat l(n, this->getN());
 
-    vector<std::thread> threads(p);
+    vector<std::future<void>> futures(pool->size());
 
-    for (size_t ii = 0; ii < p; ii++)
+    for (size_t ii = 0; ii < pool->size(); ii++)
     {
-        threads[ii] = std::thread(&Credit_portfolio::pmloss_without_secur, this, &l, n, seed, ii, p);
+        futures.at(ii) = pool->post(&Credit_portfolio::pmloss_without_secur, this, &l, n, seed, ii, pool->size());
     }
 
-    for (auto & ii: threads)
+    for (auto & ii: futures)
     {
-        ii.join();
+        ii.get();
     }
 
     return l;
@@ -1128,19 +1161,19 @@ void Credit_portfolio::ploss_ru(arma::mat *l, unsigned long n, unsigned long see
     }
 }
 
-arma::mat Credit_portfolio::loss_ru(unsigned long n, unsigned long seed, unsigned long p)
+arma::mat Credit_portfolio::loss_ru(unsigned long n, unsigned long seed, TP::ThreadPool * pool)
 {
     arma::mat l(n, this->rus.size());
-    std::vector<std::thread> threads(p);
+    vector<std::future<void>> futures(pool->size());
 
-    for (size_t ii = 0; ii < p; ii++)
+    for (size_t ii = 0; ii < pool->size(); ii++)
     {
-        threads[ii] = std::thread(&Credit_portfolio::ploss_ru, this, &l, n, seed, ii, p);
+        futures.at(ii) = pool->post(&Credit_portfolio::ploss_ru, this, &l, n, seed, ii, pool->size());
     }
 
-    for (auto &ii: threads)
+    for (auto & ii: futures)
     {
-        ii.join();
+        ii.get();
     }
 
     return l;
@@ -1178,20 +1211,21 @@ void Credit_portfolio::ploss_ru_without_secur(arma::mat *l, unsigned long n, uns
     }
 }
 
-arma::mat Credit_portfolio::loss_ru_without_secur(unsigned long n, unsigned long seed, unsigned long p)
+arma::mat Credit_portfolio::loss_ru_without_secur(unsigned long n, unsigned long seed, TP::ThreadPool * pool)
 {
     arma::mat l(n, this->rus.size());
-    std::vector<std::thread> threads(p);
+    vector<std::future<void>> futures(pool->size());
 
-    for (size_t ii = 0; ii < p; ii++)
+    for (size_t ii = 0; ii < pool->size(); ii++)
     {
-        threads[ii] = std::thread(&Credit_portfolio::ploss_ru_without_secur, this, &l, n, seed, ii, p);
+        futures.at(ii) = pool->post(&Credit_portfolio::ploss_ru_without_secur, this, &l, n, seed, ii, pool->size());
     }
 
-    for (auto &ii: threads)
+    for (auto & ii: futures)
     {
-        ii.join();
+        ii.get();
     }
+
 
     return l;
 }
@@ -1258,19 +1292,19 @@ double Credit_portfolio::sLoss_portfolio_without_secur(size_t row, size_t column
     return 0;
 }
 
-arma::mat Credit_portfolio::loss_portfolio(unsigned long n, unsigned long seed, unsigned long p)
+arma::mat Credit_portfolio::loss_portfolio(unsigned long n, unsigned long seed, TP::ThreadPool * pool)
 {
     arma::mat l(n, this->size());
-    std::vector<std::thread> threads(p);
+    vector<std::future<void>> futures(pool->size());
 
-    for (size_t ii = 0; ii < p; ii++)
+    for (size_t ii = 0; ii < pool->size(); ii++)
     {
-        threads[ii] = std::thread(&Credit_portfolio::ploss_portfolio, this, &l, n, seed, ii, p);
+        futures.at(ii) = pool->post(&Credit_portfolio::ploss_portfolio, this, &l, n, seed, ii, pool->size());
     }
 
-    for (auto &ii: threads)
+    for (auto & ii: futures)
     {
-        ii.join();
+        ii.get();
     }
 
     return l;
@@ -1305,19 +1339,19 @@ void Credit_portfolio::ploss_portfolio_without_secur(arma::mat *l, unsigned long
     }
 }
 
-arma::mat Credit_portfolio::loss_portfolio_without_secur(unsigned long n, unsigned long seed, unsigned long p)
+arma::mat Credit_portfolio::loss_portfolio_without_secur(unsigned long n, unsigned long seed, TP::ThreadPool * pool)
 {
     arma::mat l(n, this->size());
-    std::vector<std::thread> threads(p);
+    vector<std::future<void>> futures(pool->size());
 
-    for (size_t ii = 0; ii < p; ii++)
+    for (size_t ii = 0; ii < pool->size(); ii++)
     {
-        threads[ii] = std::thread(&Credit_portfolio::ploss_portfolio_without_secur, this, &l, n, seed, ii, p);
+        futures.at(ii) = pool->post(&Credit_portfolio::ploss_portfolio_without_secur, this, &l, n, seed, ii, pool->size());
     }
 
-    for (auto &ii: threads)
+    for (auto & ii: futures)
     {
-        ii.join();
+        ii.get();
     }
 
     return l;
@@ -1356,19 +1390,19 @@ void Credit_portfolio::ploss(arma::vec *l, unsigned long n, unsigned long seed, 
     }
 }
 
-arma::vec Credit_portfolio::loss(unsigned long n, unsigned long seed, unsigned long p)
+arma::vec Credit_portfolio::loss(unsigned long n, unsigned long seed, TP::ThreadPool * pool)
 {
     arma::vec l(n);
-    vector<std::thread> threads(p);
+    vector<std::future<void>> futures(pool->size());
 
-    for (size_t ii = 0; ii < p; ii++)
+    for (size_t ii = 0; ii < pool->size(); ii++)
     {
-        threads[ii] = std::thread(&Credit_portfolio::ploss, this, &l, n, seed, ii, p);
+        futures.at(ii) = pool->post(&Credit_portfolio::ploss, this, &l, n, seed, ii, pool->size());
     }
 
-    for (auto & ii: threads)
+    for (auto & ii: futures)
     {
-        ii.join();
+        ii.get();
     }
 
     return l;
@@ -1401,19 +1435,19 @@ void Credit_portfolio::ploss_without_secur(arma::vec *l, unsigned long n, unsign
     }
 }
 
-arma::vec Credit_portfolio::loss_without_secur(unsigned long n, unsigned long seed, unsigned long p)
+arma::vec Credit_portfolio::loss_without_secur(unsigned long n, unsigned long seed, TP::ThreadPool * pool)
 {
     arma::vec l(n);
-    vector<std::thread> threads(p);
+    vector<std::future<void>> futures(pool->size());
 
-    for (size_t ii = 0; ii < p; ii++)
+    for (size_t ii = 0; ii < pool->size(); ii++)
     {
-        threads[ii] = std::thread(&Credit_portfolio::ploss_without_secur, this, &l, n, seed, ii, p);
+        futures.at(ii) = pool->post(&Credit_portfolio::ploss_without_secur, this, &l, n, seed, ii, pool->size());
     }
 
-    for (auto & ii: threads)
+    for (auto & ii: futures)
     {
-        ii.join();
+        ii.get();
     }
 
     return l;
@@ -1541,23 +1575,23 @@ void Credit_portfolio::pd_c_fill(arma::mat * pd_c, size_t * ii, CreditRisk::Inte
     }
 }
 
-arma::mat Credit_portfolio::pd_c(CreditRisk::Integrator::PointsAndWeigths points, unsigned long p)
+arma::mat Credit_portfolio::pd_c(CreditRisk::Integrator::PointsAndWeigths points, TP::ThreadPool * pool)
 {
     arma::mat pd_c(this->getN(), points.points.size(), arma::fill::zeros);
 
-    std::vector<std::thread> threads(p);
+    vector<std::future<void>> futures(pool->size());
 
     size_t jj = 0;
     // this->pd_c_fill(&pd_c, &jj, &points);
 
-    for (size_t ii = 0; ii < p; ii++)
+    for (size_t ii = 0; ii < pool->size(); ii++)
     {
-        threads[ii] = std::thread(&Credit_portfolio::pd_c_fill, this, &pd_c, &jj, &points);
+        futures.at(ii) = pool->post(&Credit_portfolio::pd_c_fill, this, &pd_c, &jj, &points);
     }
 
-    for (unsigned long ii = 0; ii < p; ii++)
+    for (auto & ii: futures)
     {
-        threads[ii].join();
+        ii.get();
     }
 
     return pd_c;
@@ -1991,34 +2025,34 @@ void Credit_portfolio::saddle_point_pd(double loss, arma::vec * n, arma::vec * e
     }
 }
 
-double Credit_portfolio::cdf(double loss, arma::vec n, arma::vec eadxlgd, arma::mat pd_c, CreditRisk::Integrator::PointsAndWeigths * points, size_t p)
+double Credit_portfolio::cdf(double loss, arma::vec n, arma::vec eadxlgd, arma::mat pd_c, CreditRisk::Integrator::PointsAndWeigths * points, TP::ThreadPool * pool)
 {
     arma::vec prob(points->points.size());
 
-    vector<std::thread> threads(p);
+    vector<std::future<void>> futures(pool->size());
 
-    for (size_t ii = 0; ii < p; ii++)
+    for (size_t ii = 0; ii < pool->size(); ii++)
     {
-        threads[ii] = std::thread(&Credit_portfolio::saddle_point_pd, this, loss, &n, &eadxlgd, &pd_c, points, &prob, ii, p);
+        futures.at(ii) = pool->post(&Credit_portfolio::saddle_point_pd, this, loss, &n, &eadxlgd, &pd_c, points, &prob, ii, pool->size());
     }
 
-    for (unsigned long ii = 0; ii < p; ii++)
+    for (auto & ii: futures)
     {
-        threads[ii].join();
+        ii.get();
     }
 
     return arma::accu(prob);
 }
 
-double Credit_portfolio::fitQuantile_pd(double loss, double prob, arma::vec n, arma::vec eadxlgd, arma::mat pd_c, CreditRisk::Integrator::PointsAndWeigths & points, size_t p)
+double Credit_portfolio::fitQuantile_pd(double loss, double prob, arma::vec n, arma::vec eadxlgd, arma::mat pd_c, CreditRisk::Integrator::PointsAndWeigths & points, TP::ThreadPool * pool)
 {
-    return this->cdf(loss, n, eadxlgd, pd_c, &points, p) - prob;
+    return this->cdf(loss, n, eadxlgd, pd_c, &points, pool) - prob;
 }
 
-double Credit_portfolio::quantile(double prob, arma::vec n, arma::vec eadxlgd, arma::mat pd_c, CreditRisk::Integrator::PointsAndWeigths * points, double xtol, double rtol, size_t p)
+double Credit_portfolio::quantile(double prob, arma::vec n, arma::vec eadxlgd, arma::mat pd_c, CreditRisk::Integrator::PointsAndWeigths * points, TP::ThreadPool * pool, double xtol, double rtol)
 {
     // return root_secant(&Credit_portfolio::fitQuantile_pd, *this, 0.01, 0.99, 1e-9, prob, n, eadxlgd, pd_c, *points, p);
-    return CreditRisk::Optim::root_Brentq(&Credit_portfolio::fitQuantile_pd, *this, 0.01, 0.5, xtol, rtol, 100, prob, n, eadxlgd, pd_c, *points, p);
+    return CreditRisk::Optim::root_Brentq(&Credit_portfolio::fitQuantile_pd, *this, 0.01, 0.5, xtol, rtol, 100, prob, n, eadxlgd, pd_c, *points, pool);
 }
 
 void Credit_portfolio::contrib_without_secur(double loss, arma::vec * n, arma::vec * eadxlgd, arma::mat * pd_c, arma::vec * con,
@@ -2047,21 +2081,21 @@ void Credit_portfolio::contrib_without_secur(double loss, arma::vec * n, arma::v
     }
 }
 
-arma::vec Credit_portfolio::getContrib_without_secur(double loss,  arma::vec n, arma::vec eadxlgd, arma::mat pd_c, CreditRisk::Integrator::PointsAndWeigths * points, size_t p)
+arma::vec Credit_portfolio::getContrib_without_secur(double loss,  arma::vec n, arma::vec eadxlgd, arma::mat pd_c, CreditRisk::Integrator::PointsAndWeigths * points, TP::ThreadPool * pool)
 {
     arma::vec con(points->points.size(), arma::fill::zeros);
     arma::vec c_contrib(this->getN(), arma::fill::zeros);
 
-    std::vector<std::thread> threads(p);
+    vector<std::future<void>> futures(pool->size());
 
-    for (unsigned long ii = 0; ii < p; ii++)
+    for (size_t ii = 0; ii < pool->size(); ii++)
     {
-        threads[ii] = std::thread(&Credit_portfolio::contrib_without_secur, this, loss, &n, &eadxlgd, &pd_c, &con, &c_contrib, points, ii, p);
+        futures.at(ii) = pool->post(&Credit_portfolio::contrib_without_secur, this, loss, &n, &eadxlgd, &pd_c, &con, &c_contrib, points, ii, pool->size());
     }
 
-    for (unsigned long ii = 0; ii < p; ii++)
+    for (auto & ii: futures)
     {
-        threads[ii].join();
+        ii.get();
     }
 
     double t_contrib = arma::accu(con);
@@ -2106,21 +2140,21 @@ void Credit_portfolio::contrib(double loss, arma::vec * n, arma::vec * eadxlgd, 
     }
 }
 
-arma::vec Credit_portfolio::getContrib(double loss,  arma::vec n, arma::vec eadxlgd, arma::mat pd_c, CreditRisk::Integrator::PointsAndWeigths * points, size_t p)
+arma::vec Credit_portfolio::getContrib(double loss,  arma::vec n, arma::vec eadxlgd, arma::mat pd_c, CreditRisk::Integrator::PointsAndWeigths * points, TP::ThreadPool * pool)
 {
     arma::vec con(points->points.size(), arma::fill::zeros);
     arma::vec c_contrib(this->getN(), arma::fill::zeros);
 
-    std::vector<std::thread> threads(p);
+    vector<std::future<void>> futures(pool->size());
 
-    for (unsigned long ii = 0; ii < p; ii++)
+    for (size_t ii = 0; ii < pool->size(); ii++)
     {
-        threads[ii] = std::thread(&Credit_portfolio::contrib, this, loss, &n, &eadxlgd, &pd_c, &con, &c_contrib, points, ii, p);
+        futures.at(ii) = pool->post(&Credit_portfolio::contrib, this, loss, &n, &eadxlgd, &pd_c, &con, &c_contrib, points, ii, pool->size());
     }
 
-    for (unsigned long ii = 0; ii < p; ii++)
+    for (auto & ii: futures)
     {
-        threads[ii].join();
+        ii.get();
     }
 
     double t_contrib = arma::accu(con);
@@ -2146,4 +2180,194 @@ double Credit_portfolio::EVA(arma::vec eadxlgd, arma::vec contrib)
 
     return eva;
 }
+
+arma::vec Credit_portfolio::minimize_EAD_constant(arma::vec n, arma::mat pd_c, CreditRisk::Integrator::PointsAndWeigths * points,
+                                                  TP::ThreadPool * pool, double total_ead_var, std::vector<double> x0,
+                                                  std::vector<double> lower, std::vector<double> upper)
+{
+    struct Arg_data
+    {
+        CreditRisk::Credit_portfolio * credit_portfolio;
+        arma::vec ns;
+        arma::mat pd_c;
+        CreditRisk::Integrator::PointsAndWeigths * points;
+        std::vector<double> EAD_p;
+        double total_ead_var, lower, upper, new_T_EAD;
+        TP::ThreadPool * pool;
+        size_t iter;
+
+        Arg_data(CreditRisk::Credit_portfolio * credit_portfolio,
+                 arma::vec n, arma::mat pd_c,
+                 CreditRisk::Integrator::PointsAndWeigths * points,
+                 double total_ead_var, double lower, double upper, TP::ThreadPool * pool) :
+            credit_portfolio(credit_portfolio), ns(n),
+            pd_c(pd_c), points(points),
+            EAD_p(credit_portfolio->get_portfolios_EADs()),
+            total_ead_var(total_ead_var), lower(lower), upper(upper),
+            new_T_EAD(credit_portfolio->T_EAD * (1 + total_ead_var)),
+            pool(pool), iter(0) {}
+
+        ~Arg_data() = default;
+
+        size_t get_n()
+        {
+            return this->credit_portfolio->size() - 1;
+        }
+
+        std::vector<double> get_xn(std::vector<double> x)
+        {
+            double xn = new_T_EAD;
+            std::vector<double> sol(x.size() + 1);
+
+            for (size_t ii = 0; ii < x.size(); ii++)
+            {
+                xn -= (1 + x[ii]) * this->EAD_p[ii];
+            }
+
+            xn /= this->EAD_p[this->EAD_p.size() - 1];
+
+            for (size_t ii = 0; ii < x.size(); ii++)
+            {
+                sol[ii] = x[ii];
+            }
+
+            sol[x.size()] = (xn - 1);
+
+            return sol;
+        }
+
+        double check_ead(std::vector<double> x)
+        {
+            double t_ead = 0;
+
+            for (size_t ii = 0; ii < x.size(); ii++)
+            {
+                t_ead += (1 + x[ii]) * this->EAD_p[ii];
+            }
+
+            return t_ead;
+        }
+
+        arma::vec std_eadxlgds(std::vector<double> x)
+        {
+            arma::vec std_eadsxlgds = arma::vec(this->credit_portfolio->getN());
+            double T_EADxLGD = 0;
+            size_t jj = 0;
+            size_t kk = 0;
+
+            for (auto & ii: *this->credit_portfolio)
+            {
+                for (size_t hh = 0; hh < ii->size(); hh++)
+                {
+                    std_eadsxlgds[jj] = (*ii)[hh].ead * (1 + x[kk]) * (*ii)[hh].lgd_addon;
+                    T_EADxLGD += std_eadsxlgds[jj] * this->ns[jj];
+                    jj++;
+                }
+                kk++;
+            }
+
+            std_eadsxlgds /= T_EADxLGD;
+            return std_eadsxlgds;
+        }
+
+
+        double evaluate(std::vector<double> x)
+        {
+            arma::vec std_eadsxlgds = arma::vec(this->credit_portfolio->getN());
+            double T_EADxLGD = 0;
+            size_t jj = 0;
+            size_t kk = 0;
+
+            for (auto & ii: *this->credit_portfolio)
+            {
+                for (size_t hh = 0; hh < ii->size(); hh++)
+                {
+                    std_eadsxlgds[jj] = (*ii)[hh].ead * (1 + x[kk]) * (*ii)[hh].lgd_addon;
+                    T_EADxLGD += std_eadsxlgds[jj] * this->ns[jj];
+                    jj++;
+                }
+                kk++;
+            }
+
+            std_eadsxlgds /= T_EADxLGD;
+
+            double loss = credit_portfolio->quantile(0.9995, this->ns, std_eadsxlgds, pd_c, points, this->pool, 1e-13, 1e-7);
+            arma::vec contrib = this->credit_portfolio->getContrib_without_secur(loss, this->ns, std_eadsxlgds, this->pd_c, this->points, this->pool);
+
+            return  this->credit_portfolio->EVA(std_eadsxlgds * T_EADxLGD, contrib * T_EADxLGD);
+        }
+
+    };
+
+    auto fitnes = [] (const std::vector<double> &x, std::vector<double> &grad, void * args)
+    {
+        Q_UNUSED(grad);
+        Q_UNUSED(args);
+
+        Arg_data * parameters = static_cast<Arg_data *>(args);
+
+        std::vector<double> sol = parameters->get_xn(x);
+
+        if ((sol.at(sol.size() - 1) > parameters->upper) | (sol.at(sol.size() - 1) < parameters->lower)) return 1e10;
+        double eva = parameters->evaluate(sol);
+        parameters->iter++;
+
+        //printf("iter %i\r", iter);
+        std::cout << "Iter: " << parameters->iter << " f(x)= " << eva << " EAD: " << std::setprecision(16) << parameters->check_ead(sol);
+        for (auto & ii: sol) std::cout << " " << ii << " ";
+        std::cout << std::endl;
+
+        return -eva;
+    };
+
+    Arg_data fitness = Arg_data(this, n, pd_c, points, total_ead_var, lower.at(lower.size() - 1),
+                                upper.at(upper.size() - 1), pool);
+
+    vector<double> down(fitness.get_n());
+
+    for (size_t ii = 0; ii < down.size(); ii++)
+    {
+        down.at(ii) = lower.at(ii);
+    }
+
+    vector<double> up(fitness.get_n());
+
+    for (size_t ii = 0; ii < up.size(); ii++)
+    {
+        up.at(ii) = upper.at(ii);
+    }
+
+    nlopt::opt optimizer(nlopt::GN_MLSL, fitness.get_n()); // GN_ISRES GN_ESCH GN_MLSL LN_COBYLA GN_CRS2_LM LN_AUGLAG_EQ NLOPT_LN_BOBYQA
+    optimizer.set_lower_bounds(down);
+    optimizer.set_upper_bounds(up);
+
+    optimizer.set_min_objective(fitnes, (void*)&fitness);
+
+    optimizer.set_xtol_rel(1e-9);
+    optimizer.set_maxeval(10000);
+
+    vector<double> init(fitness.get_n());
+
+    for (size_t ii = 0; ii < init.size(); ii++)
+    {
+        init.at(ii) = x0.at(ii);
+    }
+
+    double minf;
+
+    try{
+        nlopt::result result = optimizer.optimize(init, minf);
+        Q_UNUSED(result);
+        std::cout << "found minimum at f(" << ") = "
+                  << std::setprecision(10) << minf << std::endl;
+    }
+    catch(std::exception &e) {
+        std::cout << "nlopt failed: " << e.what() << std::endl;
+    }
+
+    std::vector<double> res = fitness.get_xn(init);
+
+    return res;
+}
+
 }

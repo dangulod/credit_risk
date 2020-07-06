@@ -19,7 +19,10 @@ file(GLOB MODEL_SOURCES
     src/Portfolio_optim/*.cpp
     )
 
-include_directories("include/CreditRisk")
+include_directories(
+    "include/CreditRisk"
+    "include"
+    )
 
 add_library(CreditRisk ${MODEL_SOURCES})
 

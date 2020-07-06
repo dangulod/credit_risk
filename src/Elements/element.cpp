@@ -153,7 +153,7 @@ Element Element::from_ptree(pt::ptree & value)
 
 double Element::el()
 {
-    return this->pd * this->_le;
+    return this->pd * this->lgd * this->ead;
 }
 
 double Element::pd_c(double cwi)
@@ -283,7 +283,7 @@ double Element::EVA(double eadxlgd, double CeR, double cti, double rf, double ta
     double t_ead = eadxlgd / this->lgd_addon;
     double n_ead = fmax(t_ead - this->ead, 0);
     double o_ead = (n_ead > 0) ? this->ead : t_ead;
-    double el    = t_ead * this->pd * this->lgd;
+    double el    = t_ead * this->pd_b * this->lgd;
     CeR -= el;
     return ((((this->spread_new * 12 * n_ead) + (this->spread_old * 12 * o_ead)) * (1 - cti) - el + rf * CeR) * (1 - tax) - (hr * CeR)) * this->n;
 }

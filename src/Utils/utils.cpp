@@ -78,13 +78,91 @@ arma::vec randn_v(size_t n, unsigned long seed)
     return ale;
 }
 
+double mean(const arma::vec & x)
+{
+    double mean = 0;
+
+    for (auto & ii: x)
+    {
+        mean += ii;
+    }
+
+    return mean / x.size();
+}
+
 double quantile(arma::vec x, double q)
 {
     if (q < 0 | q > 1) throw std::invalid_argument("Invalid percentile value");
     x = arma::sort(x);
 
-    return x.at(static_cast<size_t>(q * x.size() - 1));
+    int n = q * x.size();
+
+    double y1 = x.at(static_cast<size_t>(q * x.size()));
+
+    if (static_cast<size_t>(q * x.size() + 1) >= x.size())
+    {
+        return y1;
+    }
+
+    double y2 = x.at(static_cast<size_t>(q * x.size() + 1));
+
+    double x1 = (static_cast<double>(n) - 0.5) / x.size();
+    double x2 = (static_cast<double>(n) + 0.5) / x.size();
+
+    return (y1 * (x2 - q) + y2 * (q - x1)) / (x2 - x1);
 }
+
+arma::vec contributions(const arma::mat & x, double q, double lower, double upper)
+{
+    arma::vec total(x.n_rows);
+
+    for (size_t ii = 0; ii < total.size(); ii++)
+    {
+        total.at(ii) = arma::accu(x.row(ii));
+    }
+
+    arma::uvec rank = arma::sort_index(total);
+
+    arma::vec contrib(x.n_cols, arma::fill::zeros);
+
+    size_t l = (x.n_rows * lower);
+    size_t u = (x.n_rows * upper);
+
+    for (size_t ii = 0; ii < rank.size(); ii++)
+    {
+        if ((rank.at(ii) > l) & (rank.at(ii) < u))
+        {
+            for (size_t jj = 0; jj < contrib.size(); jj++)
+            {
+                contrib.at(jj) += x.at(ii, jj);
+            }
+        }
+    }
+
+    std::cout << std::endl;
+
+    contrib /= (u - l);
+
+    std::cout << std::endl;
+
+    contrib /= arma::accu(contrib);
+    contrib *= quantile(total, q);
+
+    return contrib;
+}
+
+arma::vec rowSum(const arma::mat & x)
+{
+    arma::vec total(x.n_rows);
+
+    for (size_t ii = 0; ii < x.n_rows; ii++)
+    {
+        total.at(ii) = arma::accu(x.row(ii));
+    }
+
+    return total;
+}
+
 }
 
 namespace saddle

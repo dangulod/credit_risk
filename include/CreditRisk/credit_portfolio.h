@@ -9,6 +9,10 @@
 #include "utils.h"
 #include "integrator.h"
 #include <mutex>
+#include <ThreadPool/threadPool.hpp>
+#include <nlopt.hpp>
+
+#  define Q_UNUSED(x) (void)x;
 
 namespace CreditRisk
 {
@@ -78,7 +82,7 @@ namespace CreditRisk
         void contrib_without_secur(double loss, arma::vec * n, arma::vec * eadxlgd, arma::mat * pd_c, arma::vec * con, arma::vec * c_contrib, CreditRisk::Integrator::PointsAndWeigths * points, size_t id, size_t p);
         void contrib(double loss, arma::vec * n, arma::vec * eadxlgd, arma::mat * pd_c, arma::vec * con, arma::vec * c_contrib, CreditRisk::Integrator::PointsAndWeigths * points, size_t id, size_t p);
 
-        double fitQuantile_pd(double loss, double prob, arma::vec n, arma::vec eadxlgd, arma::mat pd_c, CreditRisk::Integrator::PointsAndWeigths & points, size_t p);
+        double fitQuantile_pd(double loss, double prob, arma::vec n, arma::vec eadxlgd, arma::mat pd_c, CreditRisk::Integrator::PointsAndWeigths & points, TP::ThreadPool * pool);
 
     public:
         double fitSaddle_n(double s, double loss, arma::vec n, arma::vec eadxlgd, arma::vec pd_c);
@@ -126,46 +130,48 @@ namespace CreditRisk
         std::vector<double> get_portfolios_EADs();
         std::vector<Scenario_data> get_scenario_data(unsigned long n);
 
+        arma::vec get_ru_el();
+        arma::vec get_ru_allocation(const arma::vec & contrib);
 
         // Monte Carlo
         // Factors generation
-        arma::mat m_rand(size_t n, unsigned long seed, size_t p = std::thread::hardware_concurrency());
+        arma::mat m_rand(size_t n, unsigned long seed, TP::ThreadPool * pool);
         double d_rand(size_t row, size_t column, size_t n, unsigned long seed);
 
         // Credit Worthiness Index
-        arma::mat getCWIs(size_t n, unsigned long seed, size_t p = std::thread::hardware_concurrency());
+        arma::mat getCWIs(size_t n, unsigned long seed, TP::ThreadPool * pool);
         double d_CWI(size_t row, size_t column, size_t n, unsigned long seed);
 
         // Idiosynchratic
-        arma::mat getIdio(size_t n, size_t p = std::thread::hardware_concurrency());
+        arma::mat getIdio(size_t n, TP::ThreadPool * pool);
         double d_Idio(size_t row, size_t column, size_t n);
 
         // Loss distribution at counterparty level
         double smargin_loss(size_t row, size_t column, size_t n, unsigned long seed, Scenario_data & scenario);
         double smargin_loss_without_secur(size_t row, size_t column, size_t n, unsigned long seed);
-        arma::mat margin_loss(size_t n, unsigned long seed, size_t p = std::thread::hardware_concurrency());
-        arma::mat margin_loss_without_secur(size_t n, unsigned long seed, size_t p = std::thread::hardware_concurrency());
+        arma::mat margin_loss(size_t n, unsigned long seed, TP::ThreadPool * pool);
+        arma::mat margin_loss_without_secur(size_t n, unsigned long seed, TP::ThreadPool * pool);
 
         // Loss distribution at ru level
 
         double sLoss_ru(size_t row, size_t column, size_t n, unsigned long seed, Scenario_data & scenario);
         double sLoss_ru_without_secur(size_t row, size_t column, size_t n, unsigned long seed);
 
-        arma::mat loss_ru(unsigned long n, unsigned long seed, unsigned long p = std::thread::hardware_concurrency());
-        arma::mat loss_ru_without_secur(unsigned long n, unsigned long seed, unsigned long p = std::thread::hardware_concurrency());
+        arma::mat loss_ru(unsigned long n, unsigned long seed, TP::ThreadPool * pool);
+        arma::mat loss_ru_without_secur(unsigned long n, unsigned long seed, TP::ThreadPool * pool);
 
         // Loss distribution at portfolio level
 
         double sLoss_portfolio(size_t row, size_t column, size_t n, unsigned long seed);
         double sLoss_portfolio_without_secur(size_t row, size_t column, size_t n, unsigned long seed);
-        arma::mat loss_portfolio(unsigned long n, unsigned long seed, unsigned long p = std::thread::hardware_concurrency());
-        arma::mat loss_portfolio_without_secur(unsigned long n, unsigned long seed, unsigned long p = std::thread::hardware_concurrency());
+        arma::mat loss_portfolio(unsigned long n, unsigned long seed, TP::ThreadPool * pool);
+        arma::mat loss_portfolio_without_secur(unsigned long n, unsigned long seed, TP::ThreadPool * pool);
 
         // Loss distribution
         double sLoss(unsigned long seed, unsigned long idio_id);
         double sLoss_without_secur(unsigned long seed, unsigned long idio_id);
-        arma::vec loss(unsigned long n, unsigned long seed, unsigned long p = std::thread::hardware_concurrency());
-        arma::vec loss_without_secur(unsigned long n, unsigned long seed, unsigned long p = std::thread::hardware_concurrency());
+        arma::vec loss(unsigned long n, unsigned long seed, TP::ThreadPool * pool);
+        arma::vec loss_without_secur(unsigned long n, unsigned long seed, TP::ThreadPool * pool);
 
         // Conditional probabiliy
 
@@ -176,7 +182,7 @@ namespace CreditRisk
         arma::vec pd_c(double t, arma::vec scenarios);
         arma::vec pd_c(arma::vec t, arma::vec scenarios);
 
-        arma::mat pd_c(CreditRisk::Integrator::PointsAndWeigths points = Integrator::ghi(), unsigned long p = std::thread::hardware_concurrency());
+        arma::mat pd_c(CreditRisk::Integrator::PointsAndWeigths points, TP::ThreadPool * pool);
 
         // Saddle Point
         // with vectors
@@ -217,22 +223,24 @@ namespace CreditRisk
         // Optimizer
 
         double cdf(double loss, arma::vec n, arma::vec eadxlgd, arma::mat pd_c,
-                   CreditRisk::Integrator::PointsAndWeigths * points = new CreditRisk::Integrator::PointsAndWeigths(CreditRisk::Integrator::ghi()),
-                   size_t p = std::thread::hardware_concurrency());
+                   CreditRisk::Integrator::PointsAndWeigths * points, TP::ThreadPool * pool);
 
         double quantile(double prob, arma::vec n, arma::vec eadxlgd, arma::mat pd_c,
-                        CreditRisk::Integrator::PointsAndWeigths * points = new CreditRisk::Integrator::PointsAndWeigths(CreditRisk::Integrator::ghi()),
-                        double xtol = 1e-12, double rtol = 1e-6, size_t p = std::thread::hardware_concurrency());
+                        CreditRisk::Integrator::PointsAndWeigths * points, TP::ThreadPool * pool,
+                        double xtol = 1e-12, double rtol = 1e-6);
 
         arma::vec getContrib_without_secur(double loss,  arma::vec n, arma::vec eadxlgd, arma::mat pd_c,
-                                           CreditRisk::Integrator::PointsAndWeigths * points = new CreditRisk::Integrator::PointsAndWeigths(CreditRisk::Integrator::ghi()),
-                                           size_t p = std::thread::hardware_concurrency());
+                                           CreditRisk::Integrator::PointsAndWeigths * points, TP::ThreadPool * pool);
 
         arma::vec getContrib(double loss,  arma::vec n, arma::vec eadxlgd, arma::mat pd_c,
-                             CreditRisk::Integrator::PointsAndWeigths * points = new CreditRisk::Integrator::PointsAndWeigths(CreditRisk::Integrator::ghi()),
-                             size_t p = std::thread::hardware_concurrency());
+                             CreditRisk::Integrator::PointsAndWeigths * points, TP::ThreadPool * pool);
 
         double EVA(arma::vec eadxlgd, arma::vec contrib);
+
+        // Optimizer
+
+        arma::vec minimize_EAD_constant(arma::vec n, arma::mat pd_c, CreditRisk::Integrator::PointsAndWeigths * points,
+                                        TP::ThreadPool * pool, double total_ead_var, std::vector<double> x0, std::vector<double> lower, std::vector<double> upper);
 
     };
 }

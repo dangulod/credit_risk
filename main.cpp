@@ -2,143 +2,69 @@
 #include <armadillo>
 #include <credit_portfolio.h>
 #include <chrono>
-#include <nlopt.hpp>
-#include <portfolio_optim.h>
+#include "ThreadPool/threadPool.hpp"
 
 using namespace std;
 
-class Fitness_parameters
-{
-public:
-    CreditRisk::Credit_portfolio * credit_portfolio;
-    CreditRisk::Integrator::PointsAndWeigths points;
-    arma::mat pd_c;
-    arma::vec ns;
-    std::vector<double> EAD_p;
-    double total_ead_var, ead_var, new_T_EAD;
-
-    Fitness_parameters() = delete;
-    Fitness_parameters(CreditRisk::Credit_portfolio * credit_portfolio, CreditRisk::Integrator::PointsAndWeigths points, double total_ead_var, double ead_var):
-        credit_portfolio(credit_portfolio), points(points),
-        pd_c(credit_portfolio->pd_c(points)), ns(credit_portfolio->get_Ns()),
-        EAD_p(credit_portfolio->get_portfolios_EADs()),
-        total_ead_var(total_ead_var), ead_var(ead_var), new_T_EAD(credit_portfolio->T_EAD * (1 + total_ead_var)) {}
-    Fitness_parameters(const Fitness_parameters & value) = delete;
-    Fitness_parameters(Fitness_parameters && value) = default;
-    ~Fitness_parameters() = default;
-
-    size_t get_n()
-    {
-        return this->credit_portfolio->size() - 1;
-    }
-
-    std::vector<double> get_xn(unsigned n, const double *x)
-    {
-        double xn = new_T_EAD;
-        std::vector<double> sol(n + 1);
-
-        for (size_t ii = 0; ii < n; ii++)
-        {
-            xn -= (1 + x[ii]) * this->EAD_p[ii];
-        }
-
-        xn /= this->EAD_p[this->EAD_p.size() - 1];
-
-        for (size_t ii = 0; ii < n; ii++)
-        {
-            sol[ii] = x[ii];
-        }
-
-        sol[n] = (xn - 1);
-
-        return sol;
-    }
-
-    double check_ead(std::vector<double> x)
-    {
-        double t_ead = 0;
-
-        for (size_t ii = 0; ii < x.size(); ii++)
-        {
-            t_ead += (1 + x[ii]) * this->EAD_p[ii];
-        }
-
-        return t_ead;
-    }
-
-    arma::vec std_eadxlgds(std::vector<double> x)
-    {
-        arma::vec std_eadsxlgds = arma::vec(this->credit_portfolio->getN());
-        double T_EADxLGD = 0;
-        size_t jj = 0;
-        size_t kk = 0;
-
-        for (auto & ii: *this->credit_portfolio)
-        {
-            for (size_t hh = 0; hh < ii->size(); hh++)
-            {
-                std_eadsxlgds[jj] = (*ii)[hh].ead * (1 + x[kk]) * (*ii)[hh].lgd_addon;
-                T_EADxLGD += std_eadsxlgds[jj] * this->ns[jj];
-                jj++;
-            }
-            kk++;
-        }
-
-        std_eadsxlgds /= T_EADxLGD;
-        return std_eadsxlgds;
-    }
-
-
-    double evaluate(std::vector<double> x)
-    {
-        arma::vec std_eadsxlgds = arma::vec(this->credit_portfolio->getN());
-        double T_EADxLGD = 0;
-        size_t jj = 0;
-        size_t kk = 0;
-
-        for (auto & ii: *this->credit_portfolio)
-        {
-            for (size_t hh = 0; hh < ii->size(); hh++)
-            {
-                std_eadsxlgds[jj] = (*ii)[hh].ead * (1 + x[kk]) * (*ii)[hh].lgd_addon;
-                T_EADxLGD += std_eadsxlgds[jj] * this->ns[jj];
-                jj++;
-            }
-            kk++;
-        }
-
-        std_eadsxlgds /= T_EADxLGD;
-
-        double loss = credit_portfolio->quantile(0.9995, this->ns, std_eadsxlgds, pd_c, &points, 1e-13, 1e-7, 1);
-        arma::vec contrib = this->credit_portfolio->getContrib_without_secur(loss, this->ns, std_eadsxlgds, this->pd_c, &this->points);
-
-        return  this->credit_portfolio->EVA(std_eadsxlgds * T_EADxLGD, contrib * T_EADxLGD);
-    }
-
-};
-
-static int iter = 0;
-
-double Fitness_function(unsigned n, const double *x, double *grad, void *my_func_data)
-{
-    Fitness_parameters * parameters = static_cast<Fitness_parameters *>(my_func_data);
-
-    std::vector<double> sol = parameters->get_xn(n, x);
-
-    if (fabs(sol[n]) > parameters->ead_var) return 1e10;
-    double eva = parameters->evaluate(sol);
-    iter++;
-
-    //printf("iter %i\r", iter);
-    std::cout << "Iter: " << iter << " f(x)= " << eva << " EAD: " << std::setprecision(16) << parameters->check_ead(sol);
-    for (auto & ii: sol) std::cout << " " << ii << " ";
-    std::cout << std::endl;
-
-    return -eva;
-}
-
 int main()
 {
+    TP::ThreadPool pool(8);
+    pool.init();
+
+    std::string file = "/opt/share/data/titus/titus.json";
+    // std::string file = "/opt/share/data/ES.json";
+    pt::ptree pt;
+    pt::read_json(file, pt);
+
+    CreditRisk::Credit_portfolio p0 = CreditRisk::Credit_portfolio::from_ptree(pt);
+
+    arma::mat loss = p0.loss_ru(1000, 987654321, &pool);
+    arma::vec total = CreditRisk::Utils::rowSum(loss);
+
+    double x = CreditRisk::Utils::quantile(total, 0.9995);
+
+    arma::vec contrib = CreditRisk::Utils::contributions(loss, 0.9995, 0.999, 0.9999);
+
+    CreditRisk::Integrator::PointsAndWeigths points = CreditRisk::Integrator::ghi();
+
+    arma::mat pd_c = p0.pd_c(points, &pool);
+    arma::vec eadxlgd_std = p0.get_std_EADxLGDs();
+    arma::vec ns = p0.get_Ns();
+    double l = arma::accu(contrib) / p0.T_EADxLGD;
+
+    printf("==== POSITIONS ====\n");
+
+    for (size_t ii = 0; ii < 5; ii++)
+    {
+        printf("%.20f\n", ns.at(ii));
+    }
+
+    printf("==== EAD ====\n");
+
+    for (size_t ii = 0; ii < 5; ii++)
+    {
+        printf("%.20f\n", eadxlgd_std.at(ii));
+    }
+
+    printf("==== PD_C ====\n");
+
+    for (size_t ii = 0; ii < 5; ii++)
+    {
+        for (size_t jj = 0; jj < pd_c.n_cols; jj++)
+        {
+            printf("%.20f ", pd_c.at(ii, jj));
+        }
+        printf("\n");
+    }
+
+    arma::vec allocation = p0.getContrib(0.08008360403694485, ns, eadxlgd_std, pd_c, &points, &pool);
+
+    printf("loss: %.20f\n", arma::accu(contrib));
+    printf("loss: %.20f\n", x);
+    printf("porcentaje de perdida: %.20f\n", l);
+    printf("sum(allocation): %.20f\n", arma::accu(allocation));
+
+
     /*
     CreditRisk::Credit_portfolio p = CreditRisk::Credit_portfolio::from_csv("/opt/share/data/titus/Portfolio.csv",
                                                     "/opt/share/data/titus/Fund.csv",
@@ -273,7 +199,7 @@ int main()
     */
     //std::string file = "/opt/share/data/ES.json";
 
-
+    /*
     // ========================= OPTIMIZATION ===========================================
 
     std::string file = "/opt/share/data/optim/optim.json";
@@ -282,17 +208,32 @@ int main()
 
     CreditRisk::Credit_portfolio p0 = CreditRisk::Credit_portfolio::from_ptree(pt);
 
-    CreditRisk::Integrator::PointsAndWeigths points(CreditRisk::Integrator::ghi());
-    arma::mat pd_c = p0.pd_c(points);
+    CreditRisk::Integrator::PointsAndWeigths points(CreditRisk::Integrator::gki());
+    arma::mat pd_c = p0.pd_c(points, &pool);
     arma::vec eadxlgd_std = p0.get_std_EADxLGDs();
     arma::vec ns = p0.get_Ns();
-    double loss = p0.quantile(0.9995, ns, eadxlgd_std, pd_c, &points, 1e-12, 1e-6, 1);
+
+    std::vector<double> x0(p0.size());
+    std::fill(x0.begin(), x0.end(), 0);
+
+    std::vector<double> lower(p0.size());
+    std::fill(lower.begin(), lower.end(), -0.1);
+
+    std::vector<double> upper(p0.size());
+    std::fill(upper.begin(), upper.end(), 0.1);
+
+    auto dx = std::chrono::high_resolution_clock::now();
+    p0.minimize_EAD_constant(ns, pd_c, &points, &pool, 0, x0, lower, upper);
+
+    auto dy = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> dif = dy - dx;
+    std::cout << dif.count() << " seconds" << std::endl;
 
     printf("t_eadxlgd %.20f\n", p0.T_EADxLGD);
     printf("t_ead %.20f\n", p0.T_EAD);
-    printf("loss %.20f\n", loss);
-    printf("loss %.20f\n", loss * p0.T_EADxLGD);
     printf("EL %.20f\n", p0.getPE());
+
+    */
     /*
 
     arma::vec contrib = p0.getContrib_without_secur(loss, ns, eadxlgd_std, pd_c, &points, 1);
@@ -320,7 +261,6 @@ int main()
     printf("evaluate: %.20f\n", l.evaluate(x));
     std::cout << "growths: " << std::endl;
     x.print();
-    */
 
     Fitness_parameters fitness = Fitness_parameters(&p0, CreditRisk::Integrator::ghi(), 0, 0.1);
 
@@ -360,6 +300,9 @@ int main()
     auto dy = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> dif = dy - dx;
     std::cout << dif.count() << " seconds" << std::endl;
+    */
+
+    pool.shutdown();
 
     return 0;
 }
