@@ -160,6 +160,7 @@ void CorMatrix::check_equation(CreditRisk::Equation & value)
     if ( R2 > 1 ) throw  std::invalid_argument("R2 squared greater than 1");
     if ( this->cor.n_cols != value.weights.size() ) throw std::invalid_argument("Invalid equation, size does not match");
 }
+
 }
 
 

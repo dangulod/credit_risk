@@ -2,6 +2,7 @@
 #define UTILS_HPP
 
 #include <boost/math/special_functions/erf.hpp>
+#include <boost/algorithm/string/split.hpp>
 #include <random>
 #include <armadillo>
 #include <vector>
@@ -10,6 +11,8 @@ namespace CreditRisk
 {
     namespace Utils
     {
+        size_t number_of_lines(std::string file);
+
         void isProbability(double p);
 
         double qnorm(double p);

@@ -16,7 +16,7 @@ file(GLOB MODEL_SOURCES
     src/Fund/*.cpp
     src/Credit_portfolio/*.cpp
     src/Integrator/*.cpp
-    src/Portfolio_optim/*.cpp
+    src/Migration/*.cpp
     )
 
 include_directories(

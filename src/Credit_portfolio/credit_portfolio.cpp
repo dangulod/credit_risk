@@ -736,7 +736,7 @@ double Credit_portfolio::d_CWI(size_t row, size_t column, size_t n, unsigned lon
     if ((row < n) & !(row < 0) & !(column < 0) & (column < this->getN()))
     {
         arma::vec f = this->v_rand(seed + row);
-        return this->get_element(column).equ.CWI(f, row);
+        return this->get_element(column).equ.CWI(f, static_cast<unsigned long>(row));
     }
 
     return 0;
@@ -999,7 +999,7 @@ double Credit_portfolio::sLoss_ru(size_t row, size_t column, size_t n, unsigned 
                     size_t zz = this->which_portfolio(cc);
                     if (kk < 0)
                     {
-                        loss += jj.loss(f, row);
+                        loss += jj.loss(f, static_cast<unsigned long>(row));
                     } else
                     {
                         Fund_data * fund = &scenario.at(kk);
@@ -1068,7 +1068,7 @@ double Credit_portfolio::sLoss_ru_without_secur(size_t row, size_t column, size_
             {
                 if (jj.ru == this->rus.at(column))
                 {
-                    loss += jj.loss(f, row);
+                    loss += jj.loss(f, static_cast<unsigned long>(row));
                 }
             }
         }

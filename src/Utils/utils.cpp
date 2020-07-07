@@ -4,6 +4,37 @@ namespace CreditRisk
 {
 namespace Utils
 {
+
+size_t number_of_lines(std::string file)
+{
+    std::ifstream input(file);
+
+    if (input.is_open())
+    {
+        std::string buffer;
+        std::vector<std::string> splitted;
+
+        std::getline(input, buffer);
+        boost::algorithm::split(splitted, buffer, [](char c) { return c == ','; });
+        size_t ll = splitted.size();
+        size_t ii = 1;
+
+        while (std::getline(input, buffer))
+        {
+            boost::algorithm::split(splitted, buffer, [](char c) { return c == ','; });
+
+            if (splitted.size() == ll)
+            {
+                ii++;
+            }
+        }
+        return ii;
+    } else
+    {
+        throw std::invalid_argument("File can not be opened");
+    }
+}
+
 void isProbability(double p)
 {
     if (p < 0 | p > 1 | !std::isfinite(p))

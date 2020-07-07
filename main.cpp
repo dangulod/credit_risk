@@ -3,11 +3,19 @@
 #include <credit_portfolio.h>
 #include <chrono>
 #include "ThreadPool/threadPool.hpp"
+#include <spread.h>
+#include <transition.h>
 
 using namespace std;
 
 int main()
 {
+    CreditRisk::Transition tr = CreditRisk::Transition::from_csv("/tmp/transition.csv");
+    CreditRisk::Spread sp = CreditRisk::Spread::from_csv("/tmp/spread.csv");
+
+    //std::cout << sp.spread("AAA", 31) << std::endl;
+    sp.get_spreads(24.5, "AAA", 0.0001).print();
+
     TP::ThreadPool pool(8);
     pool.init();
 
