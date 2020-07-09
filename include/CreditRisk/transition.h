@@ -15,7 +15,7 @@ namespace CreditRisk
 class Transition
 {
 public:
-    Transition() = delete;
+    Transition() = default;
     Transition(std::vector<std::string> states, arma::mat matrix);
     Transition(const Transition & value) = delete;
     Transition(Transition && value) = default;
@@ -33,6 +33,7 @@ public:
 
     arma::vec states_prob(double pd);
     std::string state(double pd);
+    size_t n_state(double pd);
 
 private:
     std::vector<std::string> m_states;

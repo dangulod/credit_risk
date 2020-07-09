@@ -95,12 +95,12 @@ double Portfolio::get_PE()
     return pe;
 }
 
-double Portfolio::loss(arma::vec  f, unsigned long idio_id)
+double Portfolio::loss(arma::vec  f, unsigned long idio_id, bool migration)
 {
     double loss(0);
     for (auto & ii: *this)
     {
-        loss += ii.loss(f, idio_id);;
+        loss += ii.loss(f, idio_id, migration);
     }
 
     return loss;

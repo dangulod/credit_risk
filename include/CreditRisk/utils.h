@@ -16,7 +16,9 @@ namespace CreditRisk
         void isProbability(double p);
 
         double qnorm(double p);
+        arma::vec qnorm(const arma::vec & p);
         double pnorm(double x);
+        arma::vec pnorm(const arma::vec & x);
 
         double randn_s();
         double randn_s(unsigned long seed);
@@ -43,6 +45,17 @@ namespace CreditRisk
     }
 
     namespace saddle {
+        double p_c(double p, double beta, double idio, double cwi);
+        arma::vec p_states_c(arma::vec & p_states, double npd, double beta, double idio, double cwi);
+
+        double num(double s, arma::vec l_states, arma::vec p_states);
+        double num2(double s, arma::vec l_states, arma::vec p_states);
+        double den(double s, arma::vec l_states, arma::vec p_states);
+
+        double K(double s, unsigned long n, arma::vec l_states, arma::vec p_states);
+        double K1(double s, unsigned long n, arma::vec l_states, arma::vec p_states);
+        double K2(double s, unsigned long n, arma::vec l_states, arma::vec p_states);
+
         double num(double s, double _le, double pd_c);
         double den(double s, double _le, double pd_c);
 

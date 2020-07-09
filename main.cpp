@@ -10,11 +10,38 @@ using namespace std;
 
 int main()
 {
+    /*
+    CreditRisk::Transition tr = CreditRisk::Transition::from_csv("/home/dangulo/Downloads/transition.csv");
+    CreditRisk::Spread sp = CreditRisk::Spread::from_csv("/home/dangulo/Downloads/spread.csv");
+
+
+
+    CreditRisk::Element ele(123456, 1, 100, 0.1, 0.1, 0.3, 0.3, sqrt(0.14), 3, CreditRisk::Element::Treatment::Wholesale, {123, {0.1, 0.1, 0.1}});
+    ele.p_states_c(-3.1).print();
+    */
+    std::string file = "/opt/share/data/titus/titus.json";
+    // std::string file = "/opt/share/data/ES.json";
+    pt::ptree pt;
+    pt::read_json(file, pt);
+
+    CreditRisk::Credit_portfolio p0 = CreditRisk::Credit_portfolio::from_ptree(pt);
+
+    std::cout << "h" << std::endl;
+    /*
+    CreditRisk::Credit_portfolio p = CreditRisk::Credit_portfolio::from_csv("/opt/share/data/titus/Portfolio.csv",
+                                                    "/opt/share/data/titus/Fund.csv",
+                                                    "/opt/share/data/titus/counter.csv",
+                                                    "/opt/share/data/titus/cor.csv",
+                                                    1,
+                                                    "/home/dangulo/Downloads/transition.csv",
+                                                    "/home/dangulo/Downloads/spread.csv");
+
+    pt::write_json("/opt/share/data/titus/titus.json", p.to_ptree());
+
+    */
+    /*
     CreditRisk::Transition tr = CreditRisk::Transition::from_csv("/tmp/transition.csv");
     CreditRisk::Spread sp = CreditRisk::Spread::from_csv("/tmp/spread.csv");
-
-    //std::cout << sp.spread("AAA", 31) << std::endl;
-    sp.get_spreads(24.5, "AAA", 0.0001).print();
 
     TP::ThreadPool pool(8);
     pool.init();
@@ -26,53 +53,7 @@ int main()
 
     CreditRisk::Credit_portfolio p0 = CreditRisk::Credit_portfolio::from_ptree(pt);
 
-    arma::mat loss = p0.loss_ru(1000, 987654321, &pool);
-    arma::vec total = CreditRisk::Utils::rowSum(loss);
-
-    double x = CreditRisk::Utils::quantile(total, 0.9995);
-
-    arma::vec contrib = CreditRisk::Utils::contributions(loss, 0.9995, 0.999, 0.9999);
-
-    CreditRisk::Integrator::PointsAndWeigths points = CreditRisk::Integrator::ghi();
-
-    arma::mat pd_c = p0.pd_c(points, &pool);
-    arma::vec eadxlgd_std = p0.get_std_EADxLGDs();
-    arma::vec ns = p0.get_Ns();
-    double l = arma::accu(contrib) / p0.T_EADxLGD;
-
-    printf("==== POSITIONS ====\n");
-
-    for (size_t ii = 0; ii < 5; ii++)
-    {
-        printf("%.20f\n", ns.at(ii));
-    }
-
-    printf("==== EAD ====\n");
-
-    for (size_t ii = 0; ii < 5; ii++)
-    {
-        printf("%.20f\n", eadxlgd_std.at(ii));
-    }
-
-    printf("==== PD_C ====\n");
-
-    for (size_t ii = 0; ii < 5; ii++)
-    {
-        for (size_t jj = 0; jj < pd_c.n_cols; jj++)
-        {
-            printf("%.20f ", pd_c.at(ii, jj));
-        }
-        printf("\n");
-    }
-
-    arma::vec allocation = p0.getContrib(0.08008360403694485, ns, eadxlgd_std, pd_c, &points, &pool);
-
-    printf("loss: %.20f\n", arma::accu(contrib));
-    printf("loss: %.20f\n", x);
-    printf("porcentaje de perdida: %.20f\n", l);
-    printf("sum(allocation): %.20f\n", arma::accu(allocation));
-
-
+    */
     /*
     CreditRisk::Credit_portfolio p = CreditRisk::Credit_portfolio::from_csv("/opt/share/data/titus/Portfolio.csv",
                                                     "/opt/share/data/titus/Fund.csv",
@@ -310,7 +291,7 @@ int main()
     std::cout << dif.count() << " seconds" << std::endl;
     */
 
-    pool.shutdown();
+    // pool.shutdown();
 
     return 0;
 }

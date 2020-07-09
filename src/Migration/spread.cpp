@@ -26,7 +26,7 @@ Spread Spread::from_ptree(pt::ptree & value)
         hh++;
     }
 
-    arma::mat matrix(value.get_child("matrix").size(), value.get_child("matrix").size());
+    arma::mat matrix(value.get_child("matrix").size(), terms.size());
     size_t c_ii = 0;
 
     BOOST_FOREACH(const pt::ptree::value_type & ii, value.get_child("matrix"))
@@ -241,8 +241,8 @@ double Spread::spread(std::string state, double term)
 
 arma::vec Spread::get_spreads(double term, std::string state,  double rf, double max)
 {
-    arma::vec result(this->m_states.size(), arma::fill::zeros);
     size_t ss = this->state(state);
+    arma::vec result(this->m_states.size() - ss - 1, arma::fill::zeros);
     double s0 = this->spread(state, term);
     double a, b, sf, desc;
 
@@ -252,7 +252,7 @@ arma::vec Spread::get_spreads(double term, std::string state,  double rf, double
         a = rf + s0;
         b = rf + sf;
         desc = (a * pow(1 + b, term) + b - a) / (b * pow(1 + b, term));
-        result.at(ii) = std::min(1 - desc, max);
+        result.at(ii - (ss + 1)) = std::min(1 - desc, max);
     }
 
     return result;

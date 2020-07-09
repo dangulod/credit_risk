@@ -15,7 +15,7 @@ namespace CreditRisk
 class Spread
 {
 public:
-    Spread() = delete;
+    Spread() = default;
     Spread(std::vector<std::string> states, std::vector<unsigned int> terms, arma::mat matrix);
     Spread(const Spread & value) = delete;
     Spread(Spread && value) = default;
@@ -30,7 +30,7 @@ public:
     double at(size_t ii, size_t jj);
 
     size_t n_states();
-        size_t n_terms();
+    size_t n_terms();
 
     double spread(std::string state, double term);
     size_t state(std::string state);

@@ -57,12 +57,36 @@ double qnorm(double p)
 
 }
 
+arma::vec qnorm(const arma::vec & p)
+{
+    arma::vec r = p;
+
+    for (auto & ii: r)
+    {
+        ii = qnorm(ii);
+    }
+
+    return r;
+}
+
 double pnorm(double x)
 {
     double result;
     double diff = x / M_SQRT2;
     result = boost::math::erfc(-diff) / 2;
     return result;
+}
+
+arma::vec pnorm(const arma::vec & x)
+{
+    arma::vec r = x;
+
+    for (auto & ii: r)
+    {
+        ii = pnorm(ii);
+    }
+
+    return r;
 }
 
 double randn_s()
@@ -198,6 +222,69 @@ arma::vec rowSum(const arma::mat & x)
 
 namespace saddle
 {
+    double p_c(double p, double beta, double idio, double cwi)
+    {
+        return CreditRisk::Utils::pnorm((p - (beta * cwi)) / idio);
+    }
+
+    arma::vec p_states_c(arma::vec & p_states, double npd, double beta, double idio, double cwi)
+    {
+        arma::vec pp(p_states.size() + 2);
+
+        double pb = p_c(npd, beta, idio, cwi);
+        pp.back() = pb;
+        double pa = pb;
+
+        for (size_t ii =  p_states.size(); ii > 0; ii--)
+        {
+            pa = CreditRisk::Utils::pnorm((p_states.at(ii - 1) - (beta * cwi)) / idio);
+            pp.at(ii) = pa - pb;
+            pb = pa;
+        }
+        pp.front() = 1 - pa;
+
+        return pp;
+    }
+
+    double num(double s, arma::vec l_states, arma::vec p_states)
+    {
+        return (s < 0) ?
+                    arma::accu(p_states * l_states * exp(s * l_states)) :
+                    arma::accu(p_states * l_states * exp(s * (l_states - l_states.back())));
+    }
+
+    double num2(double s, arma::vec l_states, arma::vec p_states)
+    {
+        return (s < 0) ?
+                    arma::accu(p_states * l_states * exp(s * l_states)) :
+                    arma::accu(p_states * pow(l_states, 2) * exp(s * (l_states - l_states.back())));
+    }
+
+    double den(double s, arma::vec l_states, arma::vec p_states)
+    {
+        return (s < 0) ?
+                    arma::accu(p_states * exp(s * l_states)) :
+                    arma::accu(p_states * exp(s * (l_states - l_states.back())));
+    }
+
+    double K(double s, unsigned long n, arma::vec l_states, arma::vec p_states)
+    {
+        return n * log(den(s, l_states, p_states)) + (s < 0 ? 0 : s * l_states.back());
+    }
+
+    double K1(double s, unsigned long n, arma::vec l_states, arma::vec p_states)
+    {
+        return n * num(s, l_states, p_states) / den(s, l_states, p_states);
+    }
+
+    double K2(double s, unsigned long n, arma::vec l_states, arma::vec p_states)
+    {
+        double dnum(num(s, l_states, p_states)), dden(den(s, l_states, p_states)),
+                dnum2(num2(s, l_states, p_states));
+
+        return n * (dnum2 / dden - (dnum * dnum) / (dden * dden));
+    }
+
     double num(double s, double _le, double pd_c)
     {
         return (s < 0) ? pd_c * _le * exp(s * _le) : pd_c * _le;

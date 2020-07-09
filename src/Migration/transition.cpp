@@ -92,30 +92,46 @@ size_t Transition::n_states()
     return this->m_states.size();
 }
 
+size_t Transition::n_state(double pd)
+{
+    size_t jj = 0;
+
+    for (auto & ii: this->m_matrix.col(this->m_states.size() - 1))
+    {
+        if (pd < ii)
+        {
+            return jj;
+        }
+        jj++;
+    }
+    throw std::invalid_argument("Invalid pd");
+}
+
 arma::vec Transition::states_prob(double pd)
 {
-    int d(this->m_matrix.n_cols - 1);
-    arma::vec vt(d);
+    size_t ss = this->n_state(pd);
+    size_t dd = this->m_matrix.n_cols - 1;
 
-    int kk(0);
+    arma::vec vt(dd - std::fmax(ss, 1));
+    double pa = pd;
 
-    while (pd > this->m_matrix(kk, d)) kk++;
-
-    if (kk > 0)
+    if (ss > 0)
     {
-        double w1 = ( this->m_matrix(kk, d) - pd ) / ( this->m_matrix(kk, d) - this->m_matrix(kk - 1, d) ) ;
-        double w2 = ( pd - this->m_matrix(kk - 1, d) ) / ( this->m_matrix(kk, d) - this->m_matrix(kk - 1, d) );
+        double w1 = ( this->m_matrix(ss, dd) - pd ) / ( this->m_matrix(ss, dd) - this->m_matrix(ss - 1, dd) ) ;
+        double w2 = ( pd - this->m_matrix(ss - 1, dd) ) / ( this->m_matrix(ss, dd) - this->m_matrix(ss - 1, dd) );
 
-        for (int ii = 0; ii < d; ii++)
+        for (size_t ii = dd - 1; ii >= ss; ii--)
         {
-            vt(ii) = w1 * this->m_matrix(kk - 1, ii) + w2 * this->m_matrix(kk, ii);
+            pa += w1 * this->m_matrix(ss - 1, ii) + w2 * this->m_matrix(ss, ii);
+            vt(ii - ss) = pa;
         }
     }
     else
     {
-        for (int i = 0; i < d; i++)
+        for (size_t ii = dd - 1; ii > 0; ii--)
         {
-            vt(i) = this->m_matrix(0, i) * ( 1 + (this->m_matrix(0, d) - pd) / (1 - this->m_matrix(0, d)));
+            pa += this->m_matrix(0, ii) * ( 1 + (this->m_matrix(0, dd) - pd) / (1 - this->m_matrix(0, dd)));
+            vt(ii - 1) = pa;
         }
     }
 

@@ -33,7 +33,7 @@ namespace CreditRisk
         double getT_EAD();
         double get_PE();
 
-        double loss(arma::vec f, unsigned long idio_id);
+        double loss(arma::vec f, unsigned long idio_id, bool migration = true);
         double loss(double t, arma::vec  f, unsigned long idio_id);
 
         double loss(double t, arma::vec cwi, arma::vec v_t);

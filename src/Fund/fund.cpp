@@ -94,7 +94,7 @@ Fund Fund::from_ptree(pt::ptree & value)
 
 double Fund::loss_sec(arma::vec f, unsigned long idio_id)
 {
-    double loss_wf = this->loss(f, idio_id);
+    double loss_wf = this->loss(f, idio_id, false);
     double loss    = 0;
 
     for (auto & ii: this->fundParam)

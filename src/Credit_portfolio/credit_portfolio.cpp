@@ -7,6 +7,12 @@ namespace CreditRisk
 
 Credit_portfolio::Credit_portfolio(arma::mat cor):  n(0), T_EAD(0), T_EADxLGD(0), cf(cor) {}
 
+Credit_portfolio::Credit_portfolio(arma::mat cor, Transition &transition, Spread &spread) :
+    n(0), m_transition(std::make_shared<Transition>(std::move(transition))),
+    m_spread(std::make_shared<Spread>(std::move(spread))), T_EAD(0),
+    T_EADxLGD(0), cf(cor)
+{}
+
 void Credit_portfolio::operator+(CreditRisk::Portfolio & value)
 {
     for (auto & ii: *this)
@@ -25,6 +31,14 @@ void Credit_portfolio::operator+(CreditRisk::Portfolio & value)
             this->rus.push_back(ii.ru);
 
         this->rus_pos.push_back(pos);
+    }
+
+    if ((this->m_spread != nullptr) & (this->m_transition != nullptr))
+    {
+        for (auto & ii: value)
+        {
+            ii.setMigration(this->m_transition.get(), this->m_spread.get(), value.rf);
+        }
     }
 
     this->T_EAD += value.getT_EAD();
@@ -53,10 +67,18 @@ void Credit_portfolio::operator+(CreditRisk::Portfolio && value)
         this->rus_pos.push_back(pos);
     }
 
+    if ((this->m_spread != nullptr) & (this->m_transition != nullptr))
+    {
+        for (auto & ii: value)
+        {
+            ii.setMigration(this->m_transition.get(), this->m_spread.get(), value.rf);
+        }
+    }
+
     this->T_EAD += value.getT_EAD();
     this->T_EADxLGD += value.getT_EADxLGD();
 
-    this->push_back(std::make_unique<CreditRisk::Portfolio>(std::move(value)));
+    this->push_back(std::make_unique<CreditRisk::Portfolio>(std::move(value)));    
 }
 
 void Credit_portfolio::operator+(CreditRisk::Fund & value)
@@ -117,6 +139,12 @@ pt::ptree Credit_portfolio::to_ptree()
 
     root.add_child("cor_factor", cf.to_ptree());
 
+    if ((this->m_spread != nullptr) & (this->m_transition != nullptr))
+    {
+        root.add_child("transition", m_transition->to_ptree());
+        root.add_child("spread", m_spread->to_ptree());
+    }
+
     pt::ptree port;
     pt::ptree fund;
 
@@ -137,7 +165,22 @@ pt::ptree Credit_portfolio::to_ptree()
 
 Credit_portfolio Credit_portfolio::from_ptree(pt::ptree & value)
 {
-    Credit_portfolio p(CreditRisk::CorMatrix::from_ptree(value.get_child("cor_factor")).cor);
+    boost::optional<pt::ptree &> transition =  value.get_child_optional( "transition" );
+    boost::optional<pt::ptree &> spread =  value.get_child_optional( "spread" );
+
+    std::unique_ptr<Transition> tr;
+    std::unique_ptr<Spread> sp;
+    if (!(!transition & !spread))
+    {
+        tr.reset(new Transition(Transition::from_ptree(value.get_child("transition"))));
+        sp.reset(new Spread(Spread::from_ptree(value.get_child("spread"))));
+    }
+
+    Credit_portfolio p = (!transition & !spread) ?
+                Credit_portfolio(CreditRisk::CorMatrix::from_ptree(value.get_child("cor_factor")).cor) :
+                Credit_portfolio(CreditRisk::CorMatrix::from_ptree(value.get_child("cor_factor")).cor,
+                                 *tr.get(),
+                                 *sp.get());
 
     BOOST_FOREACH(const pt::ptree::value_type & ii, value.get_child("Portfolios"))
     {
@@ -154,9 +197,22 @@ Credit_portfolio Credit_portfolio::from_ptree(pt::ptree & value)
     return p;
 }
 
-Credit_portfolio Credit_portfolio::from_csv(string Portfolios, string Funds, string Elements, string CorMatrix, size_t n_factors)
+Credit_portfolio Credit_portfolio::from_csv(string Portfolios, string Funds, string Elements, string CorMatrix, size_t n_factors,
+                                            string transition, string spread)
 {
-    Credit_portfolio p(CreditRisk::CorMatrix::from_csv(CorMatrix, n_factors).cor);
+    std::shared_ptr<Transition> tr;
+    std::shared_ptr<Spread> sp;
+    if ((transition != "") & (spread != ""))
+    {
+        tr.reset(new Transition(Transition::from_csv(transition)));
+        sp.reset(new Spread(Spread::from_csv(spread)));
+    }
+
+    Credit_portfolio p = ((transition == "") & (spread == "")) ?
+                Credit_portfolio(CreditRisk::CorMatrix::from_csv(CorMatrix, n_factors).cor):
+                Credit_portfolio(CreditRisk::CorMatrix::from_csv(CorMatrix, n_factors).cor,
+                                 *tr.get(),
+                                 *sp.get());
 
     std::vector<std::shared_ptr<CreditRisk::Portfolio>> portfolios;
 
@@ -264,10 +320,10 @@ Credit_portfolio Credit_portfolio::from_csv(string Portfolios, string Funds, str
 
                 for (size_t jj = 0; jj < n_factors; jj++)
                 {
-                    wei.at(jj) = atof(splitted.at(13 + jj).c_str());
+                    wei.at(jj) = atof(splitted.at(14 + jj).c_str());
                 }
 
-                CreditRisk::Equation eq(atoi(splitted.at(12).c_str()), wei);
+                CreditRisk::Equation eq(atoi(splitted.at(13).c_str()), wei);
 
                 CreditRisk::Element ele(atoi(splitted.at(1).c_str()),
                             atoi(splitted.at(2).c_str()),
@@ -279,7 +335,8 @@ Credit_portfolio Credit_portfolio::from_csv(string Portfolios, string Funds, str
                             atof(splitted.at(8).c_str()),
                             atof(splitted.at(9).c_str()),
                             atof(splitted.at(10).c_str()),
-                            (splitted.at(11) == "wholesale") ? CreditRisk::Element::Element::Treatment::Wholesale : CreditRisk::Element::Element::Treatment::Retail,
+                            atof(splitted.at(11).c_str()),
+                            (splitted.at(12) == "wholesale") ? CreditRisk::Element::Element::Treatment::Wholesale : CreditRisk::Element::Element::Treatment::Retail,
                             std::move(eq));
 
                 for (auto & ii: portfolios)
@@ -751,7 +808,7 @@ void Credit_portfolio::pmCWI(arma::mat *l, size_t n, unsigned long seed, size_t 
     }
 }
 
-arma::vec Credit_portfolio::marginal(arma::vec f, unsigned long idio_id)
+arma::vec Credit_portfolio::marginal(arma::vec f, unsigned long idio_id, bool migration)
 {
     size_t jj(0);
     arma::vec l(this->getN(), arma::fill::zeros);
@@ -810,7 +867,7 @@ arma::vec Credit_portfolio::marginal(arma::vec f, unsigned long idio_id)
         } else {
             for (size_t kk = 0; kk < ii->size(); kk++)
             {
-                l[jj] =(*ii)[kk].loss(f, idio_id);
+                l[jj] =(*ii)[kk].loss(f, idio_id, migration);
                 jj++;
             }
         }
@@ -819,23 +876,23 @@ arma::vec Credit_portfolio::marginal(arma::vec f, unsigned long idio_id)
     return l;
 }
 
-arma::vec Credit_portfolio::marginal(unsigned long seed, unsigned long idio_id)
+arma::vec Credit_portfolio::marginal(unsigned long seed, unsigned long idio_id, bool migration)
 {
     arma::vec f = this->v_rand(seed);
-    return marginal(f, idio_id);
+    return marginal(f, idio_id, migration);
 }
 
-void Credit_portfolio::pmloss(arma::mat *l, size_t n, unsigned long seed, size_t id, size_t p)
+void Credit_portfolio::pmloss(arma::mat *l, size_t n, unsigned long seed, size_t id, size_t p, bool migration)
 {
    while (id < n)
     {
-        l->row(id) = marginal(seed + id, id).t();
+        l->row(id) = this->marginal(seed + id, id, migration).t();
         id += p;
     }
 }
 
 
-double Credit_portfolio::smargin_loss(size_t row, size_t column, size_t n, unsigned long seed, Scenario_data & scenario)
+double Credit_portfolio::smargin_loss(size_t row, size_t column, size_t n, unsigned long seed, Scenario_data & scenario, bool migration)
 {
     // Implementar
     if ((row < n) & !(row < 0) & !(column < 0) & (column < this->getN()))
@@ -846,7 +903,7 @@ double Credit_portfolio::smargin_loss(size_t row, size_t column, size_t n, unsig
 
         if (ff < 0)
         {
-            return element->loss(this->d_CWI(row, column, n, seed));
+            return element->loss(this->d_CWI(row, column, n, seed), migration);
         } else
         {
             size_t zz = this->which_portfolio(column);
@@ -899,17 +956,17 @@ double Credit_portfolio::smargin_loss(size_t row, size_t column, size_t n, unsig
     return 0;
 }
 
-double Credit_portfolio::smargin_loss_without_secur(size_t row, size_t column, size_t n, unsigned long seed)
+double Credit_portfolio::smargin_loss_without_secur(size_t row, size_t column, size_t n, unsigned long seed, bool migration)
 {
     if ((row < n) & !(row < 0) & !(column < 0) & (column < this->getN()))
     {
-        return this->get_element(column).loss(this->d_CWI(row, column, n, seed));
+        return this->get_element(column).loss(this->d_CWI(row, column, n, seed), migration);
     }
 
     return 0;
 }
 
-arma::mat Credit_portfolio::margin_loss(size_t n, unsigned long seed, TP::ThreadPool * pool)
+arma::mat Credit_portfolio::margin_loss(size_t n, unsigned long seed, TP::ThreadPool * pool, bool migration)
 {
     arma::mat l(n, this->getN());
 
@@ -917,7 +974,7 @@ arma::mat Credit_portfolio::margin_loss(size_t n, unsigned long seed, TP::Thread
 
     for (size_t ii = 0; ii < pool->size(); ii++)
     {
-        futures.at(ii) = pool->post(&Credit_portfolio::pmloss, this, &l, n, seed, ii, pool->size());
+        futures.at(ii) = pool->post(&Credit_portfolio::pmloss, this, &l, n, seed, ii, pool->size(), migration);
     }
 
     for (auto & ii: futures)
@@ -928,7 +985,7 @@ arma::mat Credit_portfolio::margin_loss(size_t n, unsigned long seed, TP::Thread
     return l;
 }
 
-arma::vec Credit_portfolio::marginal_without_secur(arma::vec f, unsigned long idio_id)
+arma::vec Credit_portfolio::marginal_without_secur(arma::vec f, unsigned long idio_id, bool migration)
 {
     size_t jj(0);
     arma::vec l(this->getN(), arma::fill::zeros);
@@ -937,7 +994,7 @@ arma::vec Credit_portfolio::marginal_without_secur(arma::vec f, unsigned long id
     {
         for (size_t kk = 0; kk < ii->size(); kk++)
         {
-            l[jj] =(*ii)[kk].loss(f, idio_id);
+            l[jj] =(*ii)[kk].loss(f, idio_id, migration);
             jj++;
         }
     }
@@ -945,23 +1002,23 @@ arma::vec Credit_portfolio::marginal_without_secur(arma::vec f, unsigned long id
     return l;
 }
 
-arma::vec Credit_portfolio::marginal_without_secur(unsigned long seed, unsigned long idio_id)
+arma::vec Credit_portfolio::marginal_without_secur(unsigned long seed, unsigned long idio_id, bool migration)
 {
     arma::vec f = this->v_rand(seed);
-    return marginal_without_secur(f, idio_id);
+    return marginal_without_secur(f, idio_id, migration);
 }
 
 
-void Credit_portfolio::pmloss_without_secur(arma::mat *l, size_t n, unsigned long seed, size_t id, size_t p)
+void Credit_portfolio::pmloss_without_secur(arma::mat *l, size_t n, unsigned long seed, size_t id, size_t p, bool migration)
 {
    while (id < n)
     {
-        l->row(id) = this->marginal_without_secur(seed + id, id).t();
+        l->row(id) = this->marginal_without_secur(seed + id, id, migration).t();
         id += p;
     }
 }
 
-arma::mat Credit_portfolio::margin_loss_without_secur(size_t n, unsigned long seed, TP::ThreadPool * pool)
+arma::mat Credit_portfolio::margin_loss_without_secur(size_t n, unsigned long seed, TP::ThreadPool * pool, bool migration)
 {
     arma::mat l(n, this->getN());
 
@@ -969,7 +1026,7 @@ arma::mat Credit_portfolio::margin_loss_without_secur(size_t n, unsigned long se
 
     for (size_t ii = 0; ii < pool->size(); ii++)
     {
-        futures.at(ii) = pool->post(&Credit_portfolio::pmloss_without_secur, this, &l, n, seed, ii, pool->size());
+        futures.at(ii) = pool->post(&Credit_portfolio::pmloss_without_secur, this, &l, n, seed, ii, pool->size(), migration);
     }
 
     for (auto & ii: futures)
@@ -980,7 +1037,7 @@ arma::mat Credit_portfolio::margin_loss_without_secur(size_t n, unsigned long se
     return l;
 }
 
-double Credit_portfolio::sLoss_ru(size_t row, size_t column, size_t n, unsigned long seed, Scenario_data & scenario)
+double Credit_portfolio::sLoss_ru(size_t row, size_t column, size_t n, unsigned long seed, Scenario_data & scenario, bool migration)
 {
     // Implementar
     if ((row < n) & !(row < 0) & !(column < 0) & (column < this->rus.size()))
@@ -999,7 +1056,7 @@ double Credit_portfolio::sLoss_ru(size_t row, size_t column, size_t n, unsigned 
                     size_t zz = this->which_portfolio(cc);
                     if (kk < 0)
                     {
-                        loss += jj.loss(f, static_cast<unsigned long>(row));
+                        loss += jj.loss(f, static_cast<unsigned long>(row), migration);
                     } else
                     {
                         Fund_data * fund = &scenario.at(kk);
@@ -1054,7 +1111,7 @@ double Credit_portfolio::sLoss_ru(size_t row, size_t column, size_t n, unsigned 
     return 0;
 }
 
-double Credit_portfolio::sLoss_ru_without_secur(size_t row, size_t column, size_t n, unsigned long seed)
+double Credit_portfolio::sLoss_ru_without_secur(size_t row, size_t column, size_t n, unsigned long seed, bool migration)
 {
     if ((row < n) & !(row < 0) & !(column < 0) & (column < this->rus.size()))
     {
@@ -1068,7 +1125,7 @@ double Credit_portfolio::sLoss_ru_without_secur(size_t row, size_t column, size_
             {
                 if (jj.ru == this->rus.at(column))
                 {
-                    loss += jj.loss(f, static_cast<unsigned long>(row));
+                    loss += jj.loss(f, static_cast<unsigned long>(row), migration);
                 }
             }
         }
@@ -1079,7 +1136,7 @@ double Credit_portfolio::sLoss_ru_without_secur(size_t row, size_t column, size_
     return 0;
 }
 
-arma::vec Credit_portfolio::sLoss_ru(arma::vec  f, unsigned long idio_id)
+arma::vec Credit_portfolio::sLoss_ru(arma::vec  f, unsigned long idio_id, bool migration)
 {
     size_t jj(0);
     arma::vec l(this->rus.size(), arma::fill::zeros);
@@ -1137,7 +1194,7 @@ arma::vec Credit_portfolio::sLoss_ru(arma::vec  f, unsigned long idio_id)
         } else {
             for (size_t kk = 0; kk < ii->size(); kk++)
             {
-                l[this->rus_pos[jj]] += (*ii)[kk].loss(f, idio_id);
+                l[this->rus_pos[jj]] += (*ii)[kk].loss(f, idio_id, migration);
                 jj++;
             }
         }
@@ -1146,29 +1203,29 @@ arma::vec Credit_portfolio::sLoss_ru(arma::vec  f, unsigned long idio_id)
     return l;
 }
 
-arma::vec Credit_portfolio::sLoss_ru(unsigned long seed, unsigned long idio_id)
+arma::vec Credit_portfolio::sLoss_ru(unsigned long seed, unsigned long idio_id, bool migration)
 {
     arma::vec f = v_rand(seed);
-    return sLoss_ru(f, idio_id);
+    return sLoss_ru(f, idio_id, migration);
 }
 
-void Credit_portfolio::ploss_ru(arma::mat *l, unsigned long n, unsigned long seed, unsigned long id, unsigned long p)
+void Credit_portfolio::ploss_ru(arma::mat *l, unsigned long n, unsigned long seed, unsigned long id, unsigned long p, bool migration)
 {
     while (id < n)
     {
-        l->row(id) = this->sLoss_ru(seed + id, id).t();
+        l->row(id) = this->sLoss_ru(seed + id, id, migration).t();
         id += p;
     }
 }
 
-arma::mat Credit_portfolio::loss_ru(unsigned long n, unsigned long seed, TP::ThreadPool * pool)
+arma::mat Credit_portfolio::loss_ru(unsigned long n, unsigned long seed, TP::ThreadPool * pool, bool migration)
 {
     arma::mat l(n, this->rus.size());
     vector<std::future<void>> futures(pool->size());
 
     for (size_t ii = 0; ii < pool->size(); ii++)
     {
-        futures.at(ii) = pool->post(&Credit_portfolio::ploss_ru, this, &l, n, seed, ii, pool->size());
+        futures.at(ii) = pool->post(&Credit_portfolio::ploss_ru, this, &l, n, seed, ii, pool->size(), migration);
     }
 
     for (auto & ii: futures)
@@ -1179,7 +1236,7 @@ arma::mat Credit_portfolio::loss_ru(unsigned long n, unsigned long seed, TP::Thr
     return l;
 }
 
-arma::vec Credit_portfolio::sLoss_ru_without_secur(arma::vec  f, unsigned long idio_id)
+arma::vec Credit_portfolio::sLoss_ru_without_secur(arma::vec  f, unsigned long idio_id, bool migration)
 {
     size_t jj(0);
     arma::vec l(this->rus.size(), arma::fill::zeros);
@@ -1188,7 +1245,7 @@ arma::vec Credit_portfolio::sLoss_ru_without_secur(arma::vec  f, unsigned long i
     {
         for (size_t kk = 0; kk < ii->size(); kk++)
         {
-            l[this->rus_pos[jj]] += (*ii)[kk].loss(f, idio_id);
+            l[this->rus_pos[jj]] += (*ii)[kk].loss(f, idio_id, migration);
             jj++;
         }
     }
@@ -1196,29 +1253,29 @@ arma::vec Credit_portfolio::sLoss_ru_without_secur(arma::vec  f, unsigned long i
     return l;
 }
 
-arma::vec Credit_portfolio::sLoss_ru_without_secur(unsigned long seed, unsigned long idio_id)
+arma::vec Credit_portfolio::sLoss_ru_without_secur(unsigned long seed, unsigned long idio_id, bool migration)
 {
     arma::vec f = v_rand(seed);
-    return sLoss_ru_without_secur(f, idio_id);
+    return sLoss_ru_without_secur(f, idio_id, migration);
 }
 
-void Credit_portfolio::ploss_ru_without_secur(arma::mat *l, unsigned long n, unsigned long seed, unsigned long id, unsigned long p)
+void Credit_portfolio::ploss_ru_without_secur(arma::mat *l, unsigned long n, unsigned long seed, unsigned long id, unsigned long p, bool migration)
 {
     while (id < n)
     {
-        l->row(id) = this->sLoss_ru_without_secur(seed + id, id).t();
+        l->row(id) = this->sLoss_ru_without_secur(seed + id, id, migration).t();
         id += p;
     }
 }
 
-arma::mat Credit_portfolio::loss_ru_without_secur(unsigned long n, unsigned long seed, TP::ThreadPool * pool)
+arma::mat Credit_portfolio::loss_ru_without_secur(unsigned long n, unsigned long seed, TP::ThreadPool * pool, bool migration)
 {
     arma::mat l(n, this->rus.size());
     vector<std::future<void>> futures(pool->size());
 
     for (size_t ii = 0; ii < pool->size(); ii++)
     {
-        futures.at(ii) = pool->post(&Credit_portfolio::ploss_ru_without_secur, this, &l, n, seed, ii, pool->size());
+        futures.at(ii) = pool->post(&Credit_portfolio::ploss_ru_without_secur, this, &l, n, seed, ii, pool->size(), migration);
     }
 
     for (auto & ii: futures)
@@ -1230,7 +1287,7 @@ arma::mat Credit_portfolio::loss_ru_without_secur(unsigned long n, unsigned long
     return l;
 }
 
-arma::vec Credit_portfolio::sLoss_portfolio(arma::vec  f, unsigned long idio_id)
+arma::vec Credit_portfolio::sLoss_portfolio(arma::vec  f, unsigned long idio_id, bool migration)
 {
     size_t hh(0);
     arma::vec l(this->size(), arma::fill::zeros);
@@ -1241,7 +1298,7 @@ arma::vec Credit_portfolio::sLoss_portfolio(arma::vec  f, unsigned long idio_id)
         {
             l[hh] = dynamic_cast<CreditRisk::Fund*>(ii.get())->loss_sec(f, idio_id);
         } else {
-            l[hh] = ii->loss(f, idio_id);
+            l[hh] = ii->loss(f, idio_id, migration);
         }
         hh++;
     }
@@ -1249,22 +1306,22 @@ arma::vec Credit_portfolio::sLoss_portfolio(arma::vec  f, unsigned long idio_id)
     return l;
 }
 
-arma::vec Credit_portfolio::sLoss_portfolio(unsigned long seed, unsigned long idio_id)
+arma::vec Credit_portfolio::sLoss_portfolio(unsigned long seed, unsigned long idio_id, bool migration)
 {
     arma::vec f = v_rand(seed);
-    return sLoss_portfolio(f, idio_id);
+    return sLoss_portfolio(f, idio_id, migration);
 }
 
-void Credit_portfolio::ploss_portfolio(arma::mat *l, unsigned long n, unsigned long seed, unsigned long id, unsigned long p)
+void Credit_portfolio::ploss_portfolio(arma::mat *l, unsigned long n, unsigned long seed, unsigned long id, unsigned long p, bool migration)
 {
     while (id < n)
     {
-        l->row(id) = this->sLoss_portfolio(seed + id, id).t();
+        l->row(id) = this->sLoss_portfolio(seed + id, id, migration).t();
         id += p;
     }
 }
 
-double Credit_portfolio::sLoss_portfolio(size_t row, size_t column, size_t n, unsigned long seed)
+double Credit_portfolio::sLoss_portfolio(size_t row, size_t column, size_t n, unsigned long seed, bool migration)
 {
     if ((row < n) & !(row < 0) & !(column < 0) & (column < this->size()))
     {
@@ -1274,32 +1331,32 @@ double Credit_portfolio::sLoss_portfolio(size_t row, size_t column, size_t n, un
             return dynamic_cast<Fund*>(this->at(column).get())->loss_sec(f, row);
         } else
         {
-            return this->at(column)->loss(f, row);
+            return this->at(column)->loss(f, row, migration);
         }
     }
 
     return 0;
 }
 
-double Credit_portfolio::sLoss_portfolio_without_secur(size_t row, size_t column, size_t n, unsigned long seed)
+double Credit_portfolio::sLoss_portfolio_without_secur(size_t row, size_t column, size_t n, unsigned long seed, bool migration)
 {
     if ((row < n) & !(row < 0) & !(column < 0) & (column < this->size()))
     {
         arma::vec f = this->v_rand(seed + row);
-        return this->at(column)->loss(f, row);
+        return this->at(column)->loss(f, row, migration);
     }
 
     return 0;
 }
 
-arma::mat Credit_portfolio::loss_portfolio(unsigned long n, unsigned long seed, TP::ThreadPool * pool)
+arma::mat Credit_portfolio::loss_portfolio(unsigned long n, unsigned long seed, TP::ThreadPool * pool, bool migration)
 {
     arma::mat l(n, this->size());
     vector<std::future<void>> futures(pool->size());
 
     for (size_t ii = 0; ii < pool->size(); ii++)
     {
-        futures.at(ii) = pool->post(&Credit_portfolio::ploss_portfolio, this, &l, n, seed, ii, pool->size());
+        futures.at(ii) = pool->post(&Credit_portfolio::ploss_portfolio, this, &l, n, seed, ii, pool->size(), migration);
     }
 
     for (auto & ii: futures)
@@ -1310,43 +1367,43 @@ arma::mat Credit_portfolio::loss_portfolio(unsigned long n, unsigned long seed, 
     return l;
 }
 
-arma::vec Credit_portfolio::sLoss_portfolio_without_secur(arma::vec  f, unsigned long idio_id)
+arma::vec Credit_portfolio::sLoss_portfolio_without_secur(arma::vec  f, unsigned long idio_id, bool migration)
 {
     size_t hh(0);
     arma::vec l(this->size(), arma::fill::zeros);
 
     for (auto & ii: *this)
     {
-        l[hh] = ii->loss(f, idio_id);
+        l[hh] = ii->loss(f, idio_id, migration);
         hh++;
     }
 
     return l;
 }
 
-arma::vec Credit_portfolio::sLoss_portfolio_without_secur(unsigned long seed, unsigned long idio_id)
+arma::vec Credit_portfolio::sLoss_portfolio_without_secur(unsigned long seed, unsigned long idio_id, bool migration)
 {
     arma::vec f = v_rand(seed);
-    return sLoss_portfolio_without_secur(f, idio_id);
+    return sLoss_portfolio_without_secur(f, idio_id, migration);
 }
 
-void Credit_portfolio::ploss_portfolio_without_secur(arma::mat *l, unsigned long n, unsigned long seed, unsigned long id, unsigned long p)
+void Credit_portfolio::ploss_portfolio_without_secur(arma::mat *l, unsigned long n, unsigned long seed, unsigned long id, unsigned long p, bool migration)
 {
     while (id < n)
     {
-        l->row(id) = this->sLoss_portfolio_without_secur(seed + id, id).t();
+        l->row(id) = this->sLoss_portfolio_without_secur(seed + id, id, migration).t();
         id += p;
     }
 }
 
-arma::mat Credit_portfolio::loss_portfolio_without_secur(unsigned long n, unsigned long seed, TP::ThreadPool * pool)
+arma::mat Credit_portfolio::loss_portfolio_without_secur(unsigned long n, unsigned long seed, TP::ThreadPool * pool, bool migration)
 {
     arma::mat l(n, this->size());
     vector<std::future<void>> futures(pool->size());
 
     for (size_t ii = 0; ii < pool->size(); ii++)
     {
-        futures.at(ii) = pool->post(&Credit_portfolio::ploss_portfolio_without_secur, this, &l, n, seed, ii, pool->size());
+        futures.at(ii) = pool->post(&Credit_portfolio::ploss_portfolio_without_secur, this, &l, n, seed, ii, pool->size(), migration);
     }
 
     for (auto & ii: futures)
@@ -1357,7 +1414,7 @@ arma::mat Credit_portfolio::loss_portfolio_without_secur(unsigned long n, unsign
     return l;
 }
 
-double Credit_portfolio::sLoss(arma::vec f, unsigned long idio_id)
+double Credit_portfolio::sLoss(arma::vec f, unsigned long idio_id, bool migration)
 {
     double loss(0);
 
@@ -1367,7 +1424,7 @@ double Credit_portfolio::sLoss(arma::vec f, unsigned long idio_id)
         {
             loss += dynamic_cast<CreditRisk::Fund*>(ii.get())->loss_sec(f, idio_id);
         } else {
-            loss += ii->loss(f, idio_id);
+            loss += ii->loss(f, idio_id, migration);
         }
 
     }
@@ -1375,29 +1432,29 @@ double Credit_portfolio::sLoss(arma::vec f, unsigned long idio_id)
     return loss;
 }
 
-double Credit_portfolio::sLoss(unsigned long seed, unsigned long idio_id)
+double Credit_portfolio::sLoss(unsigned long seed, unsigned long idio_id, bool migration)
 {
     arma::vec f = v_rand(seed);
-    return sLoss(f, idio_id);
+    return sLoss(f, idio_id, migration);
 }
 
-void Credit_portfolio::ploss(arma::vec *l, unsigned long n, unsigned long seed, unsigned long id, unsigned long p)
+void Credit_portfolio::ploss(arma::vec *l, unsigned long n, unsigned long seed, unsigned long id, unsigned long p, bool migration)
 {
     while (id < n)
     {
-        l->row(id) = sLoss(seed + id, id);
+        l->row(id) = sLoss(seed + id, id, migration);
         id += p;
     }
 }
 
-arma::vec Credit_portfolio::loss(unsigned long n, unsigned long seed, TP::ThreadPool * pool)
+arma::vec Credit_portfolio::loss(unsigned long n, unsigned long seed, TP::ThreadPool * pool, bool migration)
 {
     arma::vec l(n);
     vector<std::future<void>> futures(pool->size());
 
     for (size_t ii = 0; ii < pool->size(); ii++)
     {
-        futures.at(ii) = pool->post(&Credit_portfolio::ploss, this, &l, n, seed, ii, pool->size());
+        futures.at(ii) = pool->post(&Credit_portfolio::ploss, this, &l, n, seed, ii, pool->size(), migration);
     }
 
     for (auto & ii: futures)
@@ -1408,41 +1465,41 @@ arma::vec Credit_portfolio::loss(unsigned long n, unsigned long seed, TP::Thread
     return l;
 }
 
-double Credit_portfolio::sLoss_without_secur(arma::vec f, unsigned long idio_id)
+double Credit_portfolio::sLoss_without_secur(arma::vec f, unsigned long idio_id, bool migration)
 {
     double loss(0);
 
     for (auto & ii: *this)
     {
-        loss += ii->loss(f, idio_id);
+        loss += ii->loss(f, idio_id, migration);
     }
 
     return loss;
 }
 
-double Credit_portfolio::sLoss_without_secur(unsigned long seed, unsigned long idio_id)
+double Credit_portfolio::sLoss_without_secur(unsigned long seed, unsigned long idio_id, bool migration)
 {
     arma::vec f = v_rand(seed);
-    return sLoss_without_secur(f, idio_id);
+    return sLoss_without_secur(f, idio_id, migration);
 }
 
-void Credit_portfolio::ploss_without_secur(arma::vec *l, unsigned long n, unsigned long seed, unsigned long id, unsigned long p)
+void Credit_portfolio::ploss_without_secur(arma::vec *l, unsigned long n, unsigned long seed, unsigned long id, unsigned long p, bool migration)
 {
     while (id < n)
     {
-        l->row(id) = sLoss_without_secur(seed + id, id);
+        l->row(id) = sLoss_without_secur(seed + id, id, migration);
         id += p;
     }
 }
 
-arma::vec Credit_portfolio::loss_without_secur(unsigned long n, unsigned long seed, TP::ThreadPool * pool)
+arma::vec Credit_portfolio::loss_without_secur(unsigned long n, unsigned long seed, TP::ThreadPool * pool, bool migration)
 {
     arma::vec l(n);
     vector<std::future<void>> futures(pool->size());
 
     for (size_t ii = 0; ii < pool->size(); ii++)
     {
-        futures.at(ii) = pool->post(&Credit_portfolio::ploss_without_secur, this, &l, n, seed, ii, pool->size());
+        futures.at(ii) = pool->post(&Credit_portfolio::ploss_without_secur, this, &l, n, seed, ii, pool->size(), migration);
     }
 
     for (auto & ii: futures)

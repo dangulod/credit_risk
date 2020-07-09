@@ -1,16 +1,18 @@
 #ifndef CREDIT_PORTFOLIO_H
 #define CREDIT_PORTFOLIO_H
 
+#include <memory>
+#include <thread>
+#include <mutex>
+#include "../ThreadPool/threadPool.hpp"
+#include <nlopt.hpp>
 #include "portfolio.h"
 #include "fund.h"
-#include <memory>
 #include "factorCorrelation.h"
-#include <thread>
 #include "utils.h"
 #include "integrator.h"
-#include <mutex>
-#include <ThreadPool/threadPool.hpp>
-#include <nlopt.hpp>
+#include "transition.h"
+#include "spread.h"
 
 #  define Q_UNUSED(x) (void)x;
 
@@ -29,6 +31,8 @@ namespace CreditRisk
     {
     private:
         size_t n;
+        std::shared_ptr<Transition> m_transition;
+        std::shared_ptr<Spread> m_spread;
 
         // Idiosynchratic
         arma::vec v_idio(size_t n);
@@ -40,34 +44,34 @@ namespace CreditRisk
         void pmCWI(arma::mat *l, size_t n, unsigned long seed, size_t id, size_t p);
 
         // Loss distribution at counterparty level
-        arma::vec marginal(arma::vec f, unsigned long idio_id);
-        arma::vec marginal(unsigned long seed, unsigned long idio_id);
-        void pmloss(arma::mat *l, size_t n, unsigned long seed, size_t id, size_t p);
-        arma::vec marginal_without_secur(arma::vec f, unsigned long idio_id);
-        arma::vec marginal_without_secur(unsigned long seed, unsigned long idio_id);
-        void pmloss_without_secur(arma::mat *l, size_t n, unsigned long seed, size_t id, size_t p);
+        arma::vec marginal(arma::vec f, unsigned long idio_id, bool migration = true);
+        arma::vec marginal(unsigned long seed, unsigned long idio_id, bool migration = true);
+        void pmloss(arma::mat *l, size_t n, unsigned long seed, size_t id, size_t p, bool migration = true);
+        arma::vec marginal_without_secur(arma::vec f, unsigned long idio_id, bool migration = true);
+        arma::vec marginal_without_secur(unsigned long seed, unsigned long idio_id, bool migration = true);
+        void pmloss_without_secur(arma::mat *l, size_t n, unsigned long seed, size_t id, size_t p, bool migration = true);
 
         // Loss distribution at ru level
-        arma::vec sLoss_ru(arma::vec  f, unsigned long idio_id);
-        arma::vec sLoss_ru(unsigned long seed, unsigned long idio_id);
-        void ploss_ru(arma::mat *l, unsigned long n, unsigned long seed, unsigned long id, unsigned long p);
-        arma::vec sLoss_ru_without_secur(arma::vec  f, unsigned long idio_id);
-        arma::vec sLoss_ru_without_secur(unsigned long seed, unsigned long idio_id);
-        void ploss_ru_without_secur(arma::mat *l, unsigned long n, unsigned long seed, unsigned long id, unsigned long p);
+        arma::vec sLoss_ru(arma::vec  f, unsigned long idio_id, bool migration = true);
+        arma::vec sLoss_ru(unsigned long seed, unsigned long idio_id, bool migration = true);
+        void ploss_ru(arma::mat *l, unsigned long n, unsigned long seed, unsigned long id, unsigned long p, bool migration = true);
+        arma::vec sLoss_ru_without_secur(arma::vec  f, unsigned long idio_id, bool migration = true);
+        arma::vec sLoss_ru_without_secur(unsigned long seed, unsigned long idio_id, bool migration = true);
+        void ploss_ru_without_secur(arma::mat *l, unsigned long n, unsigned long seed, unsigned long id, unsigned long p, bool migration = true);
 
         // Loss distribution at portfolio level
-        arma::vec sLoss_portfolio(arma::vec  f, unsigned long idio_id);
-        arma::vec sLoss_portfolio(unsigned long seed, unsigned long idio_id);
-        void ploss_portfolio(arma::mat *l, unsigned long n, unsigned long seed, unsigned long id, unsigned long p);
-        arma::vec sLoss_portfolio_without_secur(arma::vec  f, unsigned long idio_id);
-        arma::vec sLoss_portfolio_without_secur(unsigned long seed, unsigned long idio_id);
-        void ploss_portfolio_without_secur(arma::mat *l, unsigned long n, unsigned long seed, unsigned long id, unsigned long p);
+        arma::vec sLoss_portfolio(arma::vec  f, unsigned long idio_id, bool migration = true);
+        arma::vec sLoss_portfolio(unsigned long seed, unsigned long idio_id, bool migration = true);
+        void ploss_portfolio(arma::mat *l, unsigned long n, unsigned long seed, unsigned long id, unsigned long p, bool migration = true);
+        arma::vec sLoss_portfolio_without_secur(arma::vec  f, unsigned long idio_id, bool migration = true);
+        arma::vec sLoss_portfolio_without_secur(unsigned long seed, unsigned long idio_id, bool migration = true);
+        void ploss_portfolio_without_secur(arma::mat *l, unsigned long n, unsigned long seed, unsigned long id, unsigned long p, bool migration = true);
 
         // Loss distribution
-        double sLoss(arma::vec  f, unsigned long idio_id);
-        void ploss(arma::vec *l, unsigned long n, unsigned long seed, unsigned long id, unsigned long p);
-        double sLoss_without_secur(arma::vec  f, unsigned long idio_id);
-        void ploss_without_secur(arma::vec *l, unsigned long n, unsigned long seed, unsigned long id, unsigned long p);
+        double sLoss(arma::vec  f, unsigned long idio_id, bool migration = true);
+        void ploss(arma::vec *l, unsigned long n, unsigned long seed, unsigned long id, unsigned long p, bool migration = true);
+        double sLoss_without_secur(arma::vec  f, unsigned long idio_id, bool migration = true);
+        void ploss_without_secur(arma::vec *l, unsigned long n, unsigned long seed, unsigned long id, unsigned long p, bool migration = true);
 
         // Factors generation
         arma::vec v_rand(unsigned long seed);
@@ -78,11 +82,15 @@ namespace CreditRisk
 
         void pd_c_fill(arma::mat * pd_c, size_t * ii, CreditRisk::Integrator::PointsAndWeigths * points);
 
-        void saddle_point_pd(double loss, arma::vec * n, arma::vec * eadxlgd, arma::mat * pd_c, CreditRisk::Integrator::PointsAndWeigths * points, arma::vec * saddle_points, size_t id, size_t p);
-        void contrib_without_secur(double loss, arma::vec * n, arma::vec * eadxlgd, arma::mat * pd_c, arma::vec * con, arma::vec * c_contrib, CreditRisk::Integrator::PointsAndWeigths * points, size_t id, size_t p);
-        void contrib(double loss, arma::vec * n, arma::vec * eadxlgd, arma::mat * pd_c, arma::vec * con, arma::vec * c_contrib, CreditRisk::Integrator::PointsAndWeigths * points, size_t id, size_t p);
+        void saddle_point_pd(double loss, arma::vec * n, arma::vec * eadxlgd, arma::mat * pd_c,
+                             CreditRisk::Integrator::PointsAndWeigths * points, arma::vec * saddle_points, size_t id, size_t p);
+        void contrib_without_secur(double loss, arma::vec * n, arma::vec * eadxlgd, arma::mat * pd_c, arma::vec * con,
+                                   arma::vec * c_contrib, CreditRisk::Integrator::PointsAndWeigths * points, size_t id, size_t p);
+        void contrib(double loss, arma::vec * n, arma::vec * eadxlgd, arma::mat * pd_c, arma::vec * con, arma::vec * c_contrib,
+                     CreditRisk::Integrator::PointsAndWeigths * points, size_t id, size_t p);
 
-        double fitQuantile_pd(double loss, double prob, arma::vec n, arma::vec eadxlgd, arma::mat pd_c, CreditRisk::Integrator::PointsAndWeigths & points, TP::ThreadPool * pool);
+        double fitQuantile_pd(double loss, double prob, arma::vec n, arma::vec eadxlgd, arma::mat pd_c,
+                              CreditRisk::Integrator::PointsAndWeigths & points, TP::ThreadPool * pool);
 
     public:
         double fitSaddle_n(double s, double loss, arma::vec n, arma::vec eadxlgd, arma::vec pd_c);
@@ -95,6 +103,7 @@ namespace CreditRisk
 
         Credit_portfolio() = delete;
         Credit_portfolio(arma::mat cor);
+        Credit_portfolio(arma::mat cor, Transition & transition, Spread & spread);
         Credit_portfolio(const Credit_portfolio & value) = delete;
         Credit_portfolio(Credit_portfolio && value) = default;
         ~Credit_portfolio() = default;
@@ -107,7 +116,8 @@ namespace CreditRisk
         pt::ptree to_ptree();
         static Credit_portfolio from_ptree(pt::ptree & value);
 
-        static Credit_portfolio from_csv(string Portfolios, string Funds, string Elements, string CorMatrix, size_t n_factors);
+        static Credit_portfolio from_csv(string Portfolios, string Funds, string Elements, string CorMatrix, size_t n_factors,
+                                         string transition = "", string spread = "");
 
         size_t getN();
         void setT_EADxLGD();
@@ -147,31 +157,31 @@ namespace CreditRisk
         double d_Idio(size_t row, size_t column, size_t n);
 
         // Loss distribution at counterparty level
-        double smargin_loss(size_t row, size_t column, size_t n, unsigned long seed, Scenario_data & scenario);
-        double smargin_loss_without_secur(size_t row, size_t column, size_t n, unsigned long seed);
-        arma::mat margin_loss(size_t n, unsigned long seed, TP::ThreadPool * pool);
-        arma::mat margin_loss_without_secur(size_t n, unsigned long seed, TP::ThreadPool * pool);
+        double smargin_loss(size_t row, size_t column, size_t n, unsigned long seed, Scenario_data & scenario, bool migration = true);
+        double smargin_loss_without_secur(size_t row, size_t column, size_t n, unsigned long seed, bool migration = true);
+        arma::mat margin_loss(size_t n, unsigned long seed, TP::ThreadPool * pool, bool migration = true);
+        arma::mat margin_loss_without_secur(size_t n, unsigned long seed, TP::ThreadPool * pool, bool migration = true);
 
         // Loss distribution at ru level
 
-        double sLoss_ru(size_t row, size_t column, size_t n, unsigned long seed, Scenario_data & scenario);
-        double sLoss_ru_without_secur(size_t row, size_t column, size_t n, unsigned long seed);
+        double sLoss_ru(size_t row, size_t column, size_t n, unsigned long seed, Scenario_data & scenario, bool migration = true);
+        double sLoss_ru_without_secur(size_t row, size_t column, size_t n, unsigned long seed, bool migration = true);
 
-        arma::mat loss_ru(unsigned long n, unsigned long seed, TP::ThreadPool * pool);
-        arma::mat loss_ru_without_secur(unsigned long n, unsigned long seed, TP::ThreadPool * pool);
+        arma::mat loss_ru(unsigned long n, unsigned long seed, TP::ThreadPool * pool, bool migration = true);
+        arma::mat loss_ru_without_secur(unsigned long n, unsigned long seed, TP::ThreadPool * pool, bool migration = true);
 
         // Loss distribution at portfolio level
 
-        double sLoss_portfolio(size_t row, size_t column, size_t n, unsigned long seed);
-        double sLoss_portfolio_without_secur(size_t row, size_t column, size_t n, unsigned long seed);
-        arma::mat loss_portfolio(unsigned long n, unsigned long seed, TP::ThreadPool * pool);
-        arma::mat loss_portfolio_without_secur(unsigned long n, unsigned long seed, TP::ThreadPool * pool);
+        double sLoss_portfolio(size_t row, size_t column, size_t n, unsigned long seed, bool migration = true);
+        double sLoss_portfolio_without_secur(size_t row, size_t column, size_t n, unsigned long seed, bool migration = true);
+        arma::mat loss_portfolio(unsigned long n, unsigned long seed, TP::ThreadPool * pool, bool migration = true);
+        arma::mat loss_portfolio_without_secur(unsigned long n, unsigned long seed, TP::ThreadPool * pool, bool migration = true);
 
         // Loss distribution
-        double sLoss(unsigned long seed, unsigned long idio_id);
-        double sLoss_without_secur(unsigned long seed, unsigned long idio_id);
-        arma::vec loss(unsigned long n, unsigned long seed, TP::ThreadPool * pool);
-        arma::vec loss_without_secur(unsigned long n, unsigned long seed, TP::ThreadPool * pool);
+        double sLoss(unsigned long seed, unsigned long idio_id, bool migration = true);
+        double sLoss_without_secur(unsigned long seed, unsigned long idio_id, bool migration = true);
+        arma::vec loss(unsigned long n, unsigned long seed, TP::ThreadPool * pool, bool migration = true);
+        arma::vec loss_without_secur(unsigned long n, unsigned long seed, TP::ThreadPool * pool, bool migration = true);
 
         // Conditional probabiliy
 

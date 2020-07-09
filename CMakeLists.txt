@@ -5,8 +5,6 @@ project(Credit_Risk LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-include_directories("CreditRisk/")
-
 file(GLOB MODEL_SOURCES
     src/Elements/*.cpp
     src/Utils/*.cpp
