@@ -33,7 +33,7 @@ void Credit_portfolio::operator+(CreditRisk::Portfolio & value)
         this->rus_pos.push_back(pos);
     }
 
-    if ((this->m_spread != nullptr) & (this->m_transition != nullptr))
+    if ((this->m_spread != nullptr) && (this->m_transition != nullptr))
     {
         for (auto & ii: value)
         {
@@ -67,7 +67,7 @@ void Credit_portfolio::operator+(CreditRisk::Portfolio && value)
         this->rus_pos.push_back(pos);
     }
 
-    if ((this->m_spread != nullptr) & (this->m_transition != nullptr))
+    if ((this->m_spread != nullptr) && (this->m_transition != nullptr))
     {
         for (auto & ii: value)
         {
@@ -139,7 +139,7 @@ pt::ptree Credit_portfolio::to_ptree()
 
     root.add_child("cor_factor", cf.to_ptree());
 
-    if ((this->m_spread != nullptr) & (this->m_transition != nullptr))
+    if ((this->m_spread != nullptr) && (this->m_transition != nullptr))
     {
         root.add_child("transition", m_transition->to_ptree());
         root.add_child("spread", m_spread->to_ptree());
@@ -202,13 +202,13 @@ Credit_portfolio Credit_portfolio::from_csv(string Portfolios, string Funds, str
 {
     std::shared_ptr<Transition> tr;
     std::shared_ptr<Spread> sp;
-    if ((transition != "") & (spread != ""))
+    if ((transition != "") && (spread != ""))
     {
         tr.reset(new Transition(Transition::from_csv(transition)));
         sp.reset(new Spread(Spread::from_csv(spread)));
     }
 
-    Credit_portfolio p = ((transition == "") & (spread == "")) ?
+    Credit_portfolio p = ((transition == "") && (spread == "")) ?
                 Credit_portfolio(CreditRisk::CorMatrix::from_csv(CorMatrix, n_factors).cor):
                 Credit_portfolio(CreditRisk::CorMatrix::from_csv(CorMatrix, n_factors).cor,
                                  *tr.get(),
@@ -603,7 +603,7 @@ arma::mat Credit_portfolio::m_rand(size_t n, unsigned long seed, TP::ThreadPool 
 
 double Credit_portfolio::d_rand(size_t row, size_t column, size_t n, unsigned long seed)
 {
-    if ((row < n) & !(row < 0) & !(column < 0) & (column < this->n_factors()))
+    if ((row < n) & !(row < 0) & !(column < 0) && (column < this->n_factors()))
     {
         return this->v_rand(seed + row).at(column);
     }
@@ -736,10 +736,20 @@ size_t Credit_portfolio::which_portfolio(size_t column)
     throw std::invalid_argument("Invalid element number");
 }
 
+Transition * Credit_portfolio::get_transition()
+{
+    return this->m_transition.get();
+}
+
+Spread * Credit_portfolio::get_spread()
+{
+    return this->m_spread.get();
+}
+
 
 double Credit_portfolio::d_Idio(size_t row, size_t column, size_t n)
 {
-    if ((row < n) & !(row < 0) & !(column < 0) & (column < this->getN()))
+    if ((row < n) & !(row < 0) & !(column < 0) && (column < this->getN()))
     {
         return CreditRisk::Utils::randn_s(this->get_element(column).equ.idio_seed + row);
     }
@@ -790,7 +800,7 @@ arma::mat Credit_portfolio::getCWIs(size_t n, unsigned long seed, TP::ThreadPool
 
 double Credit_portfolio::d_CWI(size_t row, size_t column, size_t n, unsigned long seed)
 {
-    if ((row < n) & !(row < 0) & !(column < 0) & (column < this->getN()))
+    if ((row < n) & !(row < 0) & !(column < 0) && (column < this->getN()))
     {
         arma::vec f = this->v_rand(seed + row);
         return this->get_element(column).equ.CWI(f, static_cast<unsigned long>(row));
@@ -850,7 +860,7 @@ arma::vec Credit_portfolio::marginal(arma::vec f, unsigned long idio_id, bool mi
                         {
                             if ((*ii)[kk]._npd > cwi[kk])
                             {
-                                l[jj] = ((t_at[hh] < v_t[kk]) & (v_t[kk] < t_de[hh])) * (*ii)[kk]._le +
+                                l[jj] = ((t_at[hh] < v_t[kk]) && (v_t[kk] < t_de[hh])) * (*ii)[kk]._le +
                                         (fabs(v_t[kk] - t_at[hh]) < 1e-9) * fita -
                                         (fabs(v_t[kk] - t_de[hh]) < 1e-9) * fitd;
                                 l.at(jj) *= spv->fundParam[hh].purchase;
@@ -895,7 +905,7 @@ void Credit_portfolio::pmloss(arma::mat *l, size_t n, unsigned long seed, size_t
 double Credit_portfolio::smargin_loss(size_t row, size_t column, size_t n, unsigned long seed, Scenario_data & scenario, bool migration)
 {
     // Implementar
-    if ((row < n) & !(row < 0) & !(column < 0) & (column < this->getN()))
+    if ((row < n) & !(row < 0) & !(column < 0) && (column < this->getN()))
     {
         Element * element = &this->get_element(column);
 
@@ -940,7 +950,7 @@ double Credit_portfolio::smargin_loss(size_t row, size_t column, size_t n, unsig
                 {
                     for (auto & ii: *fund)
                     {
-                        l += ((ii.t_at < t) & (t < ii.t_de)) * element->_le +
+                        l += ((ii.t_at < t) && (t < ii.t_de)) * element->_le +
                                 (fabs(t - ii.t_at) < 1e-9) * ii.l_at -
                                 (fabs(t - ii.t_de) < 1e-9) * ii.l_de;
                         l *= ii.p;
@@ -958,7 +968,7 @@ double Credit_portfolio::smargin_loss(size_t row, size_t column, size_t n, unsig
 
 double Credit_portfolio::smargin_loss_without_secur(size_t row, size_t column, size_t n, unsigned long seed, bool migration)
 {
-    if ((row < n) & !(row < 0) & !(column < 0) & (column < this->getN()))
+    if ((row < n) & !(row < 0) & !(column < 0) && (column < this->getN()))
     {
         return this->get_element(column).loss(this->d_CWI(row, column, n, seed), migration);
     }
@@ -1040,7 +1050,7 @@ arma::mat Credit_portfolio::margin_loss_without_secur(size_t n, unsigned long se
 double Credit_portfolio::sLoss_ru(size_t row, size_t column, size_t n, unsigned long seed, Scenario_data & scenario, bool migration)
 {
     // Implementar
-    if ((row < n) & !(row < 0) & !(column < 0) & (column < this->rus.size()))
+    if ((row < n) & !(row < 0) & !(column < 0) && (column < this->rus.size()))
     {
         double loss = 0;
         size_t cc = 0;
@@ -1090,7 +1100,7 @@ double Credit_portfolio::sLoss_ru(size_t row, size_t column, size_t n, unsigned 
                             {
                                 for (auto & ii: *fund)
                                 {
-                                    l += ((ii.t_at < t) & (t < ii.t_de)) * jj._le +
+                                    l += ((ii.t_at < t) && (t < ii.t_de)) * jj._le +
                                             (fabs(t - ii.t_at) < 1e-9) * ii.l_at -
                                             (fabs(t - ii.t_de) < 1e-9) * ii.l_de;
                                     l *= ii.p;
@@ -1113,7 +1123,7 @@ double Credit_portfolio::sLoss_ru(size_t row, size_t column, size_t n, unsigned 
 
 double Credit_portfolio::sLoss_ru_without_secur(size_t row, size_t column, size_t n, unsigned long seed, bool migration)
 {
-    if ((row < n) & !(row < 0) & !(column < 0) & (column < this->rus.size()))
+    if ((row < n) & !(row < 0) & !(column < 0) && (column < this->rus.size()))
     {
         double loss = 0;
 
@@ -1178,7 +1188,7 @@ arma::vec Credit_portfolio::sLoss_ru(arma::vec  f, unsigned long idio_id, bool m
                         {
                             if ((*ii)[kk]._npd > cwi[kk])
                             {
-                                l[this->rus_pos[jj]] += (((t_at[hh] < v_t[kk]) & (v_t[kk] < t_de[hh])) * (*ii)[kk]._le +
+                                l[this->rus_pos[jj]] += (((t_at[hh] < v_t[kk]) && (v_t[kk] < t_de[hh])) * (*ii)[kk]._le +
                                         (fabs(v_t[kk] - t_at[hh]) < 1e-9) * fita -
                                         (fabs(v_t[kk] - t_de[hh]) < 1e-9) * fitd) * spv->fundParam[hh].purchase;
                             }
@@ -1323,7 +1333,7 @@ void Credit_portfolio::ploss_portfolio(arma::mat *l, unsigned long n, unsigned l
 
 double Credit_portfolio::sLoss_portfolio(size_t row, size_t column, size_t n, unsigned long seed, bool migration)
 {
-    if ((row < n) & !(row < 0) & !(column < 0) & (column < this->size()))
+    if ((row < n) & !(row < 0) & !(column < 0) && (column < this->size()))
     {
         arma::vec f = this->v_rand(seed + row);
         if (dynamic_cast<Fund*>(this->at(column).get()) != nullptr)
@@ -1340,7 +1350,7 @@ double Credit_portfolio::sLoss_portfolio(size_t row, size_t column, size_t n, un
 
 double Credit_portfolio::sLoss_portfolio_without_secur(size_t row, size_t column, size_t n, unsigned long seed, bool migration)
 {
-    if ((row < n) & !(row < 0) & !(column < 0) & (column < this->size()))
+    if ((row < n) & !(row < 0) & !(column < 0) && (column < this->size()))
     {
         arma::vec f = this->v_rand(seed + row);
         return this->at(column)->loss(f, row, migration);
@@ -1580,6 +1590,23 @@ arma::vec Credit_portfolio::pd_c(arma::vec scenarios)
     return vec;
 }
 
+Scenario Credit_portfolio::pd_c_mig(double scenario)
+{
+    Scenario vec(this->getN());
+    size_t jj = 0;
+
+    for (auto & ii: *this)
+    {
+        for (size_t kk = 0; kk < ii->size(); kk++)
+        {
+            vec.at(jj) = (*ii)[kk].p_states_c(scenario);
+            jj++;
+        }
+    }
+
+    return vec;
+}
+
 arma::vec Credit_portfolio::pd_c(double t, arma::vec scenarios)
 {
     arma::vec vec(this->getN());
@@ -1653,6 +1680,46 @@ arma::mat Credit_portfolio::pd_c(CreditRisk::Integrator::PointsAndWeigths points
 
     return pd_c;
 }
+
+void Credit_portfolio::pd_c_mig_fill(std::vector<Scenario> * pd_c_mig, size_t * ii, CreditRisk::Integrator::PointsAndWeigths * points)
+{
+    size_t jj;
+    while (*ii < pd_c_mig->size())
+    {
+        mu_p.lock();
+        jj = *ii;
+        *ii = *ii + 1;
+        mu_p.unlock();
+        if (jj < pd_c_mig->size())
+        {
+            pd_c_mig->at(jj) =
+            pd_c_mig->at(jj) = this->pd_c_mig(points->points(jj));
+        }
+    }
+}
+
+std::shared_ptr<std::vector<Scenario>> Credit_portfolio::pd_c_mig(CreditRisk::Integrator::PointsAndWeigths points, TP::ThreadPool * pool)
+{
+    std::shared_ptr<std::vector<Scenario>> pd_c_mig = std::make_shared<std::vector<Scenario>>(std::vector<Scenario>(points.points.size()));
+
+    vector<std::future<void>> futures(pool->size());
+
+    size_t jj = 0;
+    // this->pd_c_fill(&pd_c, &jj, &points);
+
+    for (size_t ii = 0; ii < pool->size(); ii++)
+    {
+        futures.at(ii) = pool->post(&Credit_portfolio::pd_c_mig_fill, this, pd_c_mig.get(), &jj, &points);
+    }
+
+    for (auto & ii: futures)
+    {
+        ii.get();
+    }
+
+    return pd_c_mig;
+}
+
 
 /*
  FUNCTIONS
@@ -1898,7 +1965,7 @@ std::tuple<double, double> Credit_portfolio::getSaddleNewton(double loss, arma::
 
     int ii(0);
 
-    while ((abs(fs) > tol) & (std::get<1>(k12) > 1e-7) & (ii < 200))
+    while ((abs(fs) > tol) && (std::get<1>(k12) > 1e-7) && (ii < 200))
     {
         s0 -= fs / std::get<1>(k12);
         k12 = this->K12(s0, n, eadxlgd, pd_c);
@@ -1944,7 +2011,7 @@ std::tuple<double, double> Credit_portfolio::getSaddleNewton_secur(double loss, 
 
     int ii(0);
 
-    while ((abs(fs) > tol) & (std::get<1>(k12) > 1e-7) & (ii < 200))
+    while ((abs(fs) > tol) && (std::get<1>(k12) > 1e-7) && (ii < 200))
     {
         s0 -= fs / std::get<1>(k12);
         k12 = this->K12_secur(s0, n, eadxlgd, pd_c);
@@ -2016,46 +2083,6 @@ double Credit_portfolio::fitSaddle(double s, double loss, arma::vec pd_c)
     return pow(this->K1(s, pd_c) - loss, 2);
 }
 
-double Credit_portfolio::getSaddle(double loss, arma::vec  pd_c, double s0, double a, double b, double tol)
-{
-    std::tuple<double, double> sfx = getSaddleNewton(loss, pd_c, s0, tol);
-
-    if (abs(std::get<1>(sfx)) < tol) return std::get<0>(sfx);
-
-    std::get<0>(sfx) = getSaddleBrent(loss, pd_c, a, b, tol);
-    std::get<1>(sfx) = K1(std::get<0>(sfx), pd_c) - loss;
-
-    if (abs(std::get<1>(sfx)) > tol)
-    {
-        printf("loss: %.20f, a: %.20f, b: %.20f, s: %.20f, abs(fx): %.20f\n", loss, a, b, std::get<0>(sfx), abs(std::get<0>(sfx)));
-        throw std::domain_error("A solution could not be found");
-    }
-
-    return std::get<0>(sfx);
-}
-
-std::tuple<double, double> Credit_portfolio::getSaddleNewton(double loss, arma::vec pd_c, double s0, double tol)
-{
-    std::tuple<double, double> k12(K12(s0, pd_c));
-    double fs(std::get<0>(k12) - loss);
-
-    int ii(0);
-
-    while ((abs(fs) > tol) & (std::get<1>(k12) > 1e-7) & (ii < 200))
-    {
-        s0 -= fs / std::get<1>(k12);
-        k12 = K12(s0, pd_c);
-        fs = std::get<0>(k12) - loss;
-        ii++;
-    }
-
-    return std::make_tuple(s0, fs);
-}
-
-double Credit_portfolio::getSaddleBrent(double loss, arma::vec  pd_c, double a, double b, double tol)
-{
-    return CreditRisk::Optim::root_Brent(&Credit_portfolio::fitSaddle, *this, a, b, tol, loss, pd_c);
-}
 
 /*
  *

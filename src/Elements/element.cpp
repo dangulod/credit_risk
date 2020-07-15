@@ -289,27 +289,25 @@ double Element::getT(double cwi)
 
 double Element::num(double s, double pd_c)
 {
-    return (s < 0) ? pd_c * this->_le * exp(s * this->_le) : pd_c * this->_le;
+    return CreditRisk::saddle::num(s, this->_le, pd_c);
 }
 
 double Element::den(double s, double pd_c)
 {
-    return (s < 0) ? (1 - pd_c) + pd_c * exp(s * this->_le) : (1 - pd_c) * exp(-s * this->_le) + pd_c;
+    return CreditRisk::saddle::den(s, this->_le, pd_c);
 }
 
 double Element::K(double s, double pd_c)
 {
-    return this->n * log(den(s, pd_c)) + (s < 0 ? 0 : s * this->_le);
+    return CreditRisk::saddle::K(s, this->n, this->_le, pd_c);
 }
 double Element::K1(double s, double pd_c)
 {
-    return this->n * num(s, pd_c) / den(s, pd_c);
+    return CreditRisk::saddle::K1(s, this->n, this->_le, pd_c);
 }
 double Element::K2(double s, double pd_c)
 {
-    double num(this->num(s, pd_c)), den(this->den(s, pd_c));
-
-    return this->n * ((num * this->_le) / den - (num * num) / (den * den));
+    return CreditRisk::saddle::K2(s, this->n, this->_le, pd_c);
 }
 
 double Element::EVA(double eadxlgd, double CeR, double cti, double rf, double tax, double hr)

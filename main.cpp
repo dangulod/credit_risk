@@ -10,15 +10,43 @@ using namespace std;
 
 int main()
 {
+    TP::ThreadPool pool(8);
+    pool.init();
+
+    //std::string file = "/opt/share/data/ES.json";
+    std::string file = "/opt/share/data/optim/optim.json";
+    pt::ptree pt;
+    pt::read_json(file, pt);
+
+    CreditRisk::Credit_portfolio p0 = CreditRisk::Credit_portfolio::from_ptree(pt);
+    CreditRisk::Integrator::PointsAndWeigths points = CreditRisk::Integrator::gki();
+
+    auto pd_c_mig = p0.pd_c_mig(points.points.at(1));
+
+    //auto pd_c_mig = p0.pd_c_mig(points, &pool);
+    auto pd_c = p0.pd_c(points, &pool);
+
+    std::cout << "===== migration =====" << std::endl;
+
+    for (size_t ii = 0; ii < 10; ii++)
+    {
+        pd_c_mig.at(ii).t().print();
+
+    }
+
+    std::cout << "===== No migration =====" << std::endl;
+
+    for (size_t ii = 0; ii < 10; ii++)
+    {
+        std::cout << pd_c.at(ii, 1) << std::endl;
+    }
+
     /*
     CreditRisk::Transition tr = CreditRisk::Transition::from_csv("/home/dangulo/Downloads/transition.csv");
     CreditRisk::Spread sp = CreditRisk::Spread::from_csv("/home/dangulo/Downloads/spread.csv");
 
-
-
     CreditRisk::Element ele(123456, 1, 100, 0.1, 0.1, 0.3, 0.3, sqrt(0.14), 3, CreditRisk::Element::Treatment::Wholesale, {123, {0.1, 0.1, 0.1}});
     ele.p_states_c(-3.1).print();
-    */
     std::string file = "/opt/share/data/titus/titus.json";
     // std::string file = "/opt/share/data/ES.json";
     pt::ptree pt;
@@ -26,25 +54,26 @@ int main()
 
     CreditRisk::Credit_portfolio p0 = CreditRisk::Credit_portfolio::from_ptree(pt);
 
-    std::cout << "h" << std::endl;
-    /*
-    CreditRisk::Credit_portfolio p = CreditRisk::Credit_portfolio::from_csv("/opt/share/data/titus/Portfolio.csv",
-                                                    "/opt/share/data/titus/Fund.csv",
-                                                    "/opt/share/data/titus/counter.csv",
-                                                    "/opt/share/data/titus/cor.csv",
+    p0.loss(10, 987654321, &pool).print();
+    p0.loss(10, 987654321, &pool, false).print();
+
+    CreditRisk::Credit_portfolio p = CreditRisk::Credit_portfolio::from_csv("/opt/share/data/optim/Portfolio.csv",
+                                                    "",
+                                                    "/opt/share/data/optim/counter.csv",
+                                                    "/opt/share/data/optim/cor.csv",
                                                     1,
                                                     "/home/dangulo/Downloads/transition.csv",
                                                     "/home/dangulo/Downloads/spread.csv");
 
-    pt::write_json("/opt/share/data/titus/titus.json", p.to_ptree());
+    pt::write_json("/opt/share/data/optim/optim.json", p.to_ptree());
+    */
+    /*
 
     */
     /*
     CreditRisk::Transition tr = CreditRisk::Transition::from_csv("/tmp/transition.csv");
     CreditRisk::Spread sp = CreditRisk::Spread::from_csv("/tmp/spread.csv");
 
-    TP::ThreadPool pool(8);
-    pool.init();
 
     std::string file = "/opt/share/data/titus/titus.json";
     // std::string file = "/opt/share/data/ES.json";
@@ -291,7 +320,7 @@ int main()
     std::cout << dif.count() << " seconds" << std::endl;
     */
 
-    // pool.shutdown();
+    pool.shutdown();
 
     return 0;
 }

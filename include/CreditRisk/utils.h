@@ -30,7 +30,7 @@ namespace CreditRisk
         {
             size_t ii(0);
             if (v.size() == 0) return ii;
-            while (ii < v.size() & v[ii] != x)
+            while ((ii < v.size()) && (v[ii] != x))
             {
                 ii++;
             }
@@ -62,6 +62,9 @@ namespace CreditRisk
         double K(double s, unsigned long n, double _le, double pd_c);
         double K1(double s, unsigned long n, double _le, double pd_c);
         double K2(double s, unsigned long n, double _le, double pd_c);
+
+        std::tuple<double, double, double> K012(double s, arma::vec n, arma::vec eadxlgd, arma::vec pd_c);
+        std::tuple<double, double>         K12 (double s, arma::vec n, arma::vec eadxlgd, arma::vec pd_c);
     }
 }
 

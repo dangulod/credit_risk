@@ -15,12 +15,14 @@ public:
     arma::vec p_states, l_states;
 
     Mig() : m_mig(false) {};
-    Mig(arma::vec states, arma::vec le) : m_mig(true), p_states(states), l_states(le)
+    Mig(arma::vec states, arma::vec le) : m_mig(false), p_states(states), l_states(le)
     {
         if (p_states.size() != le.size())
         {
             throw std::invalid_argument("states and losses does not have the same size");
         }
+
+        if (this->size() > 0) this->m_mig= true;
     }
 
     bool migration()

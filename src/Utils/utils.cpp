@@ -309,6 +309,45 @@ namespace saddle
 
         return n * ((dnum * _le) / dden - (dnum * dnum) / (dden * dden));
     }
+
+    std::tuple<double, double, double> K012(double s, arma::vec n, arma::vec eadxlgd, arma::vec pd_c)
+    {
+        std::tuple<double, double, double> k012(0, 0, 0);
+
+        double dnum, dden, k1;
+
+        for (size_t ii = 0; ii < n.size(); ii++)
+        {
+            dnum = saddle::num(s, eadxlgd[ii], pd_c[ii]);
+            dden = saddle::den(s, eadxlgd[ii], pd_c[ii]);
+            k1 = dnum / dden;
+
+            std::get<0>(k012) += n[ii] * (log(dden) + (s < 0 ? 0 : s *  eadxlgd[ii]));
+            std::get<1>(k012) += n[ii] * k1;
+            std::get<2>(k012) += n[ii] * (k1 * eadxlgd[ii] - pow(k1, 2));
+        }
+
+        return k012;
+    }
+
+    std::tuple<double, double>         K12(double  s, arma::vec n, arma::vec eadxlgd, arma::vec pd_c)
+    {
+        std::tuple<double, double> k12(0, 0);
+
+        double dnum, dden, k1;
+
+        for (size_t ii = 0; ii < n.size(); ii++)
+        {
+            dnum = saddle::num(s, eadxlgd[ii], pd_c[ii]);
+            dden = saddle::den(s, eadxlgd[ii], pd_c[ii]);
+            k1 = dnum / dden;
+
+            std::get<0>(k12) += n[ii] * k1;
+            std::get<1>(k12) += n[ii] * (k1 * eadxlgd[ii] - pow(k1, 2));
+        }
+
+        return k12;
+    }
 }
 
 }

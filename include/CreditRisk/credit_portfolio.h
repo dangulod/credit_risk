@@ -16,6 +16,8 @@
 
 #  define Q_UNUSED(x) (void)x;
 
+typedef std::vector<arma::vec> Scenario;
+
 namespace CreditRisk
 {
     namespace saddle
@@ -81,6 +83,7 @@ namespace CreditRisk
         double fitSaddle(double s, double loss, arma::vec pd_c);
 
         void pd_c_fill(arma::mat * pd_c, size_t * ii, CreditRisk::Integrator::PointsAndWeigths * points);
+        void pd_c_mig_fill(std::vector<Scenario> * pd_c_mig, size_t * ii, CreditRisk::Integrator::PointsAndWeigths * points);
 
         void saddle_point_pd(double loss, arma::vec * n, arma::vec * eadxlgd, arma::mat * pd_c,
                              CreditRisk::Integrator::PointsAndWeigths * points, arma::vec * saddle_points, size_t id, size_t p);
@@ -131,6 +134,9 @@ namespace CreditRisk
         Element & get_element(size_t column);
         long which_fund(size_t column);
         size_t which_portfolio(size_t column);
+
+        Transition * get_transition();
+        Spread * get_spread();
 
         // Get vectors
 
@@ -189,10 +195,12 @@ namespace CreditRisk
         arma::vec pd_c(double t, double scenario);
         arma::vec pd_c(arma::vec t, double scenarios);
         arma::vec pd_c(arma::vec scenarios);
+        Scenario pd_c_mig(double scenario);
         arma::vec pd_c(double t, arma::vec scenarios);
         arma::vec pd_c(arma::vec t, arma::vec scenarios);
 
         arma::mat pd_c(CreditRisk::Integrator::PointsAndWeigths points, TP::ThreadPool * pool);
+        std::shared_ptr<std::vector<Scenario>> pd_c_mig(CreditRisk::Integrator::PointsAndWeigths points, TP::ThreadPool * pool);
 
         // Saddle Point
         // with vectors
@@ -225,10 +233,6 @@ namespace CreditRisk
 
         std::tuple<double, double, double> K012(double s, arma::vec pd_c);
         std::tuple<double, double>         K12(double  s, arma::vec pd_c);
-
-        double getSaddle(double loss, arma::vec pd_c, double s0 = 0, double a = -1e12, double b = 1e12, double tol = 1e-7);
-        double getSaddleBrent(double loss, arma::vec pd_c, double a = -1e3, double b = 1e3, double tol = 1e-9);
-        std::tuple<double, double> getSaddleNewton(double loss, arma::vec pd_c, double s0 = 0, double tol = 1e-9);
 
         // Optimizer
 
