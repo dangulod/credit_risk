@@ -7,6 +7,8 @@
 #include <armadillo>
 #include <vector>
 
+typedef std::vector<arma::vec> Scenario, LStates;
+
 namespace CreditRisk
 {
     namespace Utils
@@ -46,25 +48,29 @@ namespace CreditRisk
 
     namespace saddle {
         double p_c(double p, double beta, double idio, double cwi);
+        double p_c(double t, double p, double beta, double idio, double cwi);
+        arma::vec p_states_c(double t, arma::vec & p_states, double npd, double beta, double idio, double cwi);
         arma::vec p_states_c(arma::vec & p_states, double npd, double beta, double idio, double cwi);
 
-        double num(double s, arma::vec l_states, arma::vec p_states);
-        double num2(double s, arma::vec l_states, arma::vec p_states);
-        double den(double s, arma::vec l_states, arma::vec p_states);
+        double num(double s, arma::vec & l_states, arma::vec & p_states);
+        double num2(double s, arma::vec & l_states, arma::vec & p_states);
+        double den(double s, arma::vec & l_states, arma::vec & p_states);
 
-        double K(double s, unsigned long n, arma::vec l_states, arma::vec p_states);
-        double K1(double s, unsigned long n, arma::vec l_states, arma::vec p_states);
-        double K2(double s, unsigned long n, arma::vec l_states, arma::vec p_states);
+        double K(double s, unsigned long n, arma::vec & l_states, arma::vec & p_states);
+        double K1(double s, unsigned long n, arma::vec & l_states, arma::vec & p_states);
+        double K2(double s, unsigned long n, arma::vec & l_states, arma::vec & p_states);
 
+        /*
         double num(double s, double _le, double pd_c);
         double den(double s, double _le, double pd_c);
 
         double K(double s, unsigned long n, double _le, double pd_c);
         double K1(double s, unsigned long n, double _le, double pd_c);
         double K2(double s, unsigned long n, double _le, double pd_c);
+        */
 
-        std::tuple<double, double, double> K012(double s, arma::vec n, arma::vec eadxlgd, arma::vec pd_c);
-        std::tuple<double, double>         K12 (double s, arma::vec n, arma::vec eadxlgd, arma::vec pd_c);
+        std::tuple<double, double, double> K012(double s, arma::vec * n, LStates * eadxlgd, Scenario * pd_c);
+        std::tuple<double, double>         K12 (double s, arma::vec * n, LStates * eadxlgd, Scenario * pd_c);
     }
 }
 

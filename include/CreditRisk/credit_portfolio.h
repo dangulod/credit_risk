@@ -16,19 +16,8 @@
 
 #  define Q_UNUSED(x) (void)x;
 
-typedef std::vector<arma::vec> Scenario;
-
 namespace CreditRisk
 {
-    namespace saddle
-    {
-        double num(double s, double _le, double pd_c);
-        double den(double s, double _le, double pd_c);
-        double K(double s, unsigned long n, double _le, double pd_c);
-        double K1(double s, unsigned long n, double _le, double pd_c);
-        double K2(double s, unsigned long n, double _le, double pd_c);
-    }
-
     class Credit_portfolio: public std::vector<std::unique_ptr<CreditRisk::Portfolio>>
     {
     private:
@@ -80,24 +69,22 @@ namespace CreditRisk
         void pv_rand(arma::mat *r, size_t n, unsigned long seed, size_t id, size_t p);
 
         // Saddle Point
-        double fitSaddle(double s, double loss, arma::vec pd_c);
 
-        void pd_c_fill(arma::mat * pd_c, size_t * ii, CreditRisk::Integrator::PointsAndWeigths * points);
-        void pd_c_mig_fill(std::vector<Scenario> * pd_c_mig, size_t * ii, CreditRisk::Integrator::PointsAndWeigths * points);
+        void pd_c_fill(std::vector<Scenario> * pd_c_mig, size_t * ii, CreditRisk::Integrator::PointsAndWeigths * points);
 
-        void saddle_point_pd(double loss, arma::vec * n, arma::vec * eadxlgd, arma::mat * pd_c,
+        void saddle_point(double loss, arma::vec * n, LStates *eadxlgd, std::vector<Scenario> * pd_c,
                              CreditRisk::Integrator::PointsAndWeigths * points, arma::vec * saddle_points, size_t id, size_t p);
-        void contrib_without_secur(double loss, arma::vec * n, arma::vec * eadxlgd, arma::mat * pd_c, arma::vec * con,
+        void contrib_without_secur(double loss, arma::vec * n, LStates * eadxlgd, std::vector<Scenario> * pd_c, arma::vec * con,
                                    arma::vec * c_contrib, CreditRisk::Integrator::PointsAndWeigths * points, size_t id, size_t p);
-        void contrib(double loss, arma::vec * n, arma::vec * eadxlgd, arma::mat * pd_c, arma::vec * con, arma::vec * c_contrib,
+        void contrib(double loss, arma::vec * n, LStates * eadxlgd, std::vector<Scenario> * pd_c, arma::vec * con, arma::vec * c_contrib,
                      CreditRisk::Integrator::PointsAndWeigths * points, size_t id, size_t p);
 
-        double fitQuantile_pd(double loss, double prob, arma::vec n, arma::vec eadxlgd, arma::mat pd_c,
-                              CreditRisk::Integrator::PointsAndWeigths & points, TP::ThreadPool * pool);
+        double fitQuantile(double loss, double prob, arma::vec * n, LStates * eadxlgd, std::vector<Scenario> * pd_c,
+                           CreditRisk::Integrator::PointsAndWeigths & points, TP::ThreadPool * pool);
 
     public:
-        double fitSaddle_n(double s, double loss, arma::vec n, arma::vec eadxlgd, arma::vec pd_c);
-        double fitSaddle_n_secur(double s, double loss, arma::vec n, arma::vec eadxlgd, arma::vec pd_c);
+        double fitSaddle_n(double s, double loss, arma::vec * n, LStates * eadxlgd, Scenario * pd_c);
+        double fitSaddle_n_secur(double s, double loss, arma::vec * n, LStates * eadxlgd, Scenario * pd_c);
 
         double T_EAD, T_EADxLGD;
         CreditRisk::CorMatrix cf;
@@ -141,6 +128,7 @@ namespace CreditRisk
         // Get vectors
 
         arma::vec get_std_EADxLGDs();
+        std::shared_ptr<LStates> get_std_states();
         arma::vec get_EADxLGDs();
         arma::vec get_Ns();
         std::vector<double> get_portfolios_EADs();
@@ -191,69 +179,58 @@ namespace CreditRisk
 
         // Conditional probabiliy
 
-        arma::vec pd_c(double scenario);
-        arma::vec pd_c(double t, double scenario);
-        arma::vec pd_c(arma::vec t, double scenarios);
-        arma::vec pd_c(arma::vec scenarios);
-        Scenario pd_c_mig(double scenario);
-        arma::vec pd_c(double t, arma::vec scenarios);
-        arma::vec pd_c(arma::vec t, arma::vec scenarios);
+        Scenario pd_c(arma::vec t, double scenarios);
+        Scenario pd_c(double scenario);
 
-        arma::mat pd_c(CreditRisk::Integrator::PointsAndWeigths points, TP::ThreadPool * pool);
-        std::shared_ptr<std::vector<Scenario>> pd_c_mig(CreditRisk::Integrator::PointsAndWeigths points, TP::ThreadPool * pool);
+        std::shared_ptr<std::vector<Scenario>> pd_c(CreditRisk::Integrator::PointsAndWeigths points, TP::ThreadPool * pool);
 
         // Saddle Point
         // with vectors
 
-        arma::vec get_t_secur(double s, arma::vec n, arma::vec eadxlgd, arma::vec pd_c, arma::vec k1s, double scenario);
+        arma::vec get_t_secur(double s, arma::vec * n, LStates * eadxlgd, Scenario * pd_c, arma::vec k1s, double scenario);
 
-        double K (double s, arma::vec n, arma::vec eadxlgd, arma::vec pd_c);
-        double K1(double s, arma::vec n, arma::vec eadxlgd, arma::vec pd_c);
-        double K1_secur(double s, arma::vec n, arma::vec eadxlgd, arma::vec pd_c);
-        double K2(double s, arma::vec n, arma::vec eadxlgd, arma::vec pd_c);
-        arma::vec K1_secur_vec(double s, arma::vec n, arma::vec eadxlgd, arma::vec pd_c);
+        double K (double s, arma::vec * n, LStates * eadxlgd, Scenario * pd_c);
+        double K1(double s, arma::vec * n, LStates * eadxlgd, Scenario * pd_c);
+        double K1_secur(double s, arma::vec * n, LStates * eadxlgd, Scenario * pd_c);
+        double K2(double s, arma::vec * n, LStates * eadxlgd, Scenario * pd_c);
+        arma::vec K1_secur_vec(double s, arma::vec * n, LStates * eadxlgd, Scenario * pd_c);
 
-        std::tuple<double, double, double> K012(double s, arma::vec n, arma::vec eadxlgd, arma::vec pd_c);
-        std::tuple<double, double>         K12(double  s, arma::vec n, arma::vec eadxlgd, arma::vec pd_c);
+        std::tuple<double, double, double> K012(double s, arma::vec * n, LStates * eadxlgd, Scenario * pd_c);
+        std::tuple<double, double>         K12(double  s, arma::vec * n, LStates * eadxlgd, Scenario * pd_c);
 
-        std::tuple<double, double>         K12_secur(double  s, arma::vec n, arma::vec eadxlgd, arma::vec pd_c);
+        std::tuple<double, double>         K12_secur(double  s, arma::vec * n, LStates * eadxlgd, Scenario * pd_c);
 
-        double getSaddle(double loss, arma::vec n, arma::vec eadxlgd, arma::vec pd_c, double s0 = 0, double a = -1e12, double b = 1e12, double tol = 1e-7);
-        double getSaddleBrent(double loss, arma::vec n, arma::vec eadxlgd, arma::vec pd_c, double a = -1e3, double b = 1e3, double xtol = 1e-12, double rtol = 1e-6);
-        std::tuple<double, double> getSaddleNewton(double loss, arma::vec n, arma::vec eadxlgd, arma::vec pd_c, double s0 = 0, double tol = 1e-9);
+        double getSaddle(double loss, arma::vec * n, LStates * eadxlgd, Scenario * pd_c,
+                         double s0 = 0, double a = -1e12, double b = 1e12, double tol = 1e-7);
+        double getSaddleBrent(double loss, arma::vec * n, LStates *eadxlgd, Scenario * pd_c,
+                              double a = -1e3, double b = 1e3, double xtol = 1e-12, double rtol = 1e-6);
+        std::tuple<double, double> getSaddleNewton(double loss, arma::vec * n, LStates * eadxlgd, Scenario * pd_c,
+                                                   double s0 = 0, double tol = 1e-9);
 
-        double getSaddle_secur(double loss, arma::vec n, arma::vec eadxlgd, arma::vec pd_c, double s0 = 0, double a = -1e10, double b = 1e10, double tol = 1e-7);
-        double getSaddleBrent_secur(double loss, arma::vec n, arma::vec eadxlgd, arma::vec pd_c, double a = -1e3, double b = 1e3, double xtol = 1e-12, double rtol = 1e-6);
-        std::tuple<double, double> getSaddleNewton_secur(double loss, arma::vec n, arma::vec eadxlgd, arma::vec pd_c, double s0 = 0, double tol = 1e-9);
-
-        // with elements
-        double K (double s, arma::vec pd_c);
-        double K1(double s, arma::vec pd_c);
-        double K2(double s, arma::vec pd_c);
-
-        std::tuple<double, double, double> K012(double s, arma::vec pd_c);
-        std::tuple<double, double>         K12(double  s, arma::vec pd_c);
+        double getSaddle_secur(double loss, arma::vec * n, LStates * eadxlgd, Scenario * pd_c, double s0 = 0, double a = -1e10, double b = 1e10, double tol = 1e-7);
+        double getSaddleBrent_secur(double loss, arma::vec * n, LStates * eadxlgd, Scenario * pd_c, double a = -1e3, double b = 1e3, double xtol = 1e-12, double rtol = 1e-6);
+        std::tuple<double, double> getSaddleNewton_secur(double loss, arma::vec * n,  LStates * eadxlgd, Scenario * pd_c, double s0 = 0, double tol = 1e-9);
 
         // Optimizer
 
-        double cdf(double loss, arma::vec n, arma::vec eadxlgd, arma::mat pd_c,
+        double cdf(double loss, arma::vec * n, LStates * eadxlgd, std::vector<Scenario> * pd_c,
                    CreditRisk::Integrator::PointsAndWeigths * points, TP::ThreadPool * pool);
 
-        double quantile(double prob, arma::vec n, arma::vec eadxlgd, arma::mat pd_c,
+        double quantile(double prob, arma::vec * n, LStates * eadxlgd, std::vector<Scenario> * pd_c,
                         CreditRisk::Integrator::PointsAndWeigths * points, TP::ThreadPool * pool,
                         double xtol = 1e-12, double rtol = 1e-6);
 
-        arma::vec getContrib_without_secur(double loss,  arma::vec n, arma::vec eadxlgd, arma::mat pd_c,
+        arma::vec getContrib_without_secur(double loss, arma::vec * n, LStates * eadxlgd, std::vector<Scenario> * pd_c,
                                            CreditRisk::Integrator::PointsAndWeigths * points, TP::ThreadPool * pool);
 
-        arma::vec getContrib(double loss,  arma::vec n, arma::vec eadxlgd, arma::mat pd_c,
+        arma::vec getContrib(double loss,  arma::vec * n, LStates * eadxlgd, std::vector<Scenario> * pd_c,
                              CreditRisk::Integrator::PointsAndWeigths * points, TP::ThreadPool * pool);
 
-        double EVA(arma::vec eadxlgd, arma::vec contrib);
+        double EVA(LStates * eadxlgd, arma::vec contrib);
 
         // Optimizer
 
-        arma::vec minimize_EAD_constant(arma::vec n, arma::mat pd_c, CreditRisk::Integrator::PointsAndWeigths * points,
+        arma::vec minimize_EAD_constant(arma::vec * n, std::vector<Scenario> * pd_c, CreditRisk::Integrator::PointsAndWeigths * points,
                                         TP::ThreadPool * pool, double total_ead_var, std::vector<double> x0, std::vector<double> lower, std::vector<double> upper);
 
     };

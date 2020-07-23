@@ -40,13 +40,6 @@ namespace CreditRisk
 
         arma::vec get_cwi(arma::vec f, unsigned long idio_id);
         arma::vec get_t(arma::vec cwi);
-
-        double K (double s, arma::vec pd_c, size_t & id);
-        double K1(double s, arma::vec pd_c, size_t & id);
-        double K2(double s, arma::vec pd_c, size_t & id);
-
-        std::tuple<double, double, double> K012(double s, arma::vec pd_c, size_t & id);
-        std::tuple<double, double>         K12(double  s, arma::vec pd_c, size_t & id);
     };
 }
 

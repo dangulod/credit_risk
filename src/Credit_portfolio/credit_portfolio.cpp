@@ -451,6 +451,23 @@ arma::vec Credit_portfolio::get_std_EADxLGDs()
     return vec;
 }
 
+std::shared_ptr<LStates> Credit_portfolio::get_std_states()
+{
+    size_t jj(0);
+    std::shared_ptr<LStates> vec(new LStates(this->getN()));
+
+    for (auto & ii: *this)
+    {
+        for (size_t kk = 0; kk < ii->size(); kk++)
+        {
+            vec->at(jj) = (*ii)[kk].l_states() / (this->T_EADxLGD * (*ii)[kk].n);
+            jj++;
+        }
+    }
+
+    return vec;
+}
+
 arma::vec Credit_portfolio::get_EADxLGDs()
 {
     size_t jj(0);
@@ -1520,43 +1537,9 @@ arma::vec Credit_portfolio::loss_without_secur(unsigned long n, unsigned long se
     return l;
 }
 
-arma::vec Credit_portfolio::pd_c(double scenario)
+Scenario Credit_portfolio::pd_c(arma::vec t, double scenario)
 {
-    arma::vec vec(this->getN());
-    size_t jj = 0;
-
-    for (auto & ii: *this)
-    {
-        for (size_t kk = 0; kk < ii->size(); kk++)
-        {
-            vec[jj] = (*ii)[kk].pd_c(scenario);
-            jj++;
-        };
-    }
-
-    return vec;
-}
-
-arma::vec Credit_portfolio::pd_c(double t, double scenario)
-{
-    arma::vec vec(this->getN());
-    size_t jj = 0;
-
-    for (auto & ii: *this)
-    {
-        for (size_t kk = 0; kk < ii->size(); kk++)
-        {
-            vec[jj] = (*ii)[kk].pd_c(t, scenario);
-            jj++;
-        };
-    }
-
-    return vec;
-}
-
-arma::vec Credit_portfolio::pd_c(arma::vec t, double scenario)
-{
-    arma::vec vec(this->getN());
+    Scenario vec(this->getN());
     size_t jj = 0;
     size_t hh = 0;
 
@@ -1564,7 +1547,7 @@ arma::vec Credit_portfolio::pd_c(arma::vec t, double scenario)
     {
         for (size_t kk = 0; kk < ii->size(); kk++)
         {
-            vec[jj] = (*ii)[kk].pd_c(t[hh], scenario);
+            vec[jj] = (*ii)[kk].p_states_c(t[hh], scenario);
             jj++;
         };
         hh++;
@@ -1573,24 +1556,8 @@ arma::vec Credit_portfolio::pd_c(arma::vec t, double scenario)
     return vec;
 }
 
-arma::vec Credit_portfolio::pd_c(arma::vec scenarios)
-{
-    arma::vec vec(this->getN());
-    size_t jj = 0;
 
-    for (auto & ii: *this)
-    {
-        for (size_t kk = 0; kk < ii->size(); kk++)
-        {
-            vec[jj] = (*ii)[kk].pd_c((*ii)[kk].equ.systematic(scenarios));
-            jj++;
-        };
-    }
-
-    return vec;
-}
-
-Scenario Credit_portfolio::pd_c_mig(double scenario)
+Scenario Credit_portfolio::pd_c(double scenario)
 {
     Scenario vec(this->getN());
     size_t jj = 0;
@@ -1607,81 +1574,7 @@ Scenario Credit_portfolio::pd_c_mig(double scenario)
     return vec;
 }
 
-arma::vec Credit_portfolio::pd_c(double t, arma::vec scenarios)
-{
-    arma::vec vec(this->getN());
-    size_t jj = 0;
-
-    for (auto & ii: *this)
-    {
-        for (size_t kk = 0; kk < ii->size(); kk++)
-        {
-            vec[jj] = (*ii)[kk].pd_c(t, (*ii)[kk].equ.systematic(scenarios));
-            jj++;
-        };
-    }
-
-    return vec;
-}
-
-arma::vec Credit_portfolio::pd_c(arma::vec t, arma::vec scenarios)
-{
-    arma::vec vec(this->getN());
-    size_t jj = 0;
-    size_t hh = 0;
-
-    for (auto & ii: *this)
-    {
-        for (size_t kk = 0; kk < ii->size(); kk++)
-        {
-            vec[jj] = (*ii)[kk].pd_c(t[hh], (*ii)[kk].equ.systematic(scenarios));
-            jj++;
-        };
-        hh++;
-    }
-
-    return vec;
-}
-
-void Credit_portfolio::pd_c_fill(arma::mat * pd_c, size_t * ii, CreditRisk::Integrator::PointsAndWeigths * points)
-{
-    size_t jj;
-    while (*ii < pd_c->n_cols)
-    {
-        mu_p.lock();
-        jj = *ii;
-        *ii = *ii + 1;
-        mu_p.unlock();
-        if (jj < pd_c->n_cols)
-        {
-            pd_c->col(jj) = this->pd_c(points->points(jj));
-        }
-    }
-}
-
-arma::mat Credit_portfolio::pd_c(CreditRisk::Integrator::PointsAndWeigths points, TP::ThreadPool * pool)
-{
-    arma::mat pd_c(this->getN(), points.points.size(), arma::fill::zeros);
-
-    vector<std::future<void>> futures(pool->size());
-
-    size_t jj = 0;
-    // this->pd_c_fill(&pd_c, &jj, &points);
-
-    for (size_t ii = 0; ii < pool->size(); ii++)
-    {
-        futures.at(ii) = pool->post(&Credit_portfolio::pd_c_fill, this, &pd_c, &jj, &points);
-    }
-
-    for (auto & ii: futures)
-    {
-        ii.get();
-    }
-
-    return pd_c;
-}
-
-void Credit_portfolio::pd_c_mig_fill(std::vector<Scenario> * pd_c_mig, size_t * ii, CreditRisk::Integrator::PointsAndWeigths * points)
+void Credit_portfolio::pd_c_fill(std::vector<Scenario> * pd_c_mig, size_t * ii, CreditRisk::Integrator::PointsAndWeigths * points)
 {
     size_t jj;
     while (*ii < pd_c_mig->size())
@@ -1693,14 +1586,14 @@ void Credit_portfolio::pd_c_mig_fill(std::vector<Scenario> * pd_c_mig, size_t * 
         if (jj < pd_c_mig->size())
         {
             pd_c_mig->at(jj) =
-            pd_c_mig->at(jj) = this->pd_c_mig(points->points(jj));
+            pd_c_mig->at(jj) = this->pd_c(points->points(jj));
         }
     }
 }
 
-std::shared_ptr<std::vector<Scenario>> Credit_portfolio::pd_c_mig(CreditRisk::Integrator::PointsAndWeigths points, TP::ThreadPool * pool)
+std::shared_ptr<std::vector<Scenario>> Credit_portfolio::pd_c(CreditRisk::Integrator::PointsAndWeigths points, TP::ThreadPool * pool)
 {
-    std::shared_ptr<std::vector<Scenario>> pd_c_mig = std::make_shared<std::vector<Scenario>>(std::vector<Scenario>(points.points.size()));
+    std::shared_ptr<std::vector<Scenario>> pd_c_mig(new std::vector<Scenario>(points.points.size()));
 
     vector<std::future<void>> futures(pool->size());
 
@@ -1709,7 +1602,7 @@ std::shared_ptr<std::vector<Scenario>> Credit_portfolio::pd_c_mig(CreditRisk::In
 
     for (size_t ii = 0; ii < pool->size(); ii++)
     {
-        futures.at(ii) = pool->post(&Credit_portfolio::pd_c_mig_fill, this, pd_c_mig.get(), &jj, &points);
+        futures.at(ii) = pool->post(&Credit_portfolio::pd_c_fill, this, pd_c_mig.get(), &jj, &points);
     }
 
     for (auto & ii: futures)
@@ -1725,7 +1618,7 @@ std::shared_ptr<std::vector<Scenario>> Credit_portfolio::pd_c_mig(CreditRisk::In
  FUNCTIONS
 */
 
-arma::vec Credit_portfolio::get_t_secur(double s, arma::vec n, arma::vec eadxlgd, arma::vec pd_c, arma::vec k1s, double scenario)
+arma::vec Credit_portfolio::get_t_secur(double s, arma::vec * n, LStates * eadxlgd, Scenario * pd_c, arma::vec k1s, double scenario)
 {
     arma::vec ts(this->size(), arma::fill::ones);
     size_t jj = 0;
@@ -1748,31 +1641,31 @@ arma::vec Credit_portfolio::get_t_secur(double s, arma::vec n, arma::vec eadxlgd
 }
 
 
-double Credit_portfolio::K (double s, arma::vec n, arma::vec eadxlgd, arma::vec pd_c)
+double Credit_portfolio::K (double s, arma::vec * n, LStates * eadxlgd, Scenario * pd_c)
 {
     double k = 0;
 
-    for (size_t ii = 0; ii < n.size(); ii++)
+    for (size_t ii = 0; ii < n->size(); ii++)
     {
-        k += saddle::K(s, n[ii], eadxlgd[ii], pd_c[ii]);
+        k += saddle::K(s, n->at(ii), eadxlgd->at(ii), pd_c->at(ii));
     }
 
     return k;
 }
 
-double Credit_portfolio::K1(double s, arma::vec n, arma::vec eadxlgd, arma::vec pd_c)
+double Credit_portfolio::K1(double s, arma::vec * n, LStates * eadxlgd, Scenario * pd_c)
 {
     double k1 = 0;
 
-    for (size_t ii = 0; ii < n.size(); ii++)
+    for (size_t ii = 0; ii < n->size(); ii++)
     {
-        k1 += saddle::K1(s, n[ii], eadxlgd[ii], pd_c[ii]);
+        k1 += saddle::K1(s, n->at(ii), eadxlgd->at(ii), pd_c->at(ii));
     }
 
     return k1;
 }
 
-double Credit_portfolio::K1_secur(double s, arma::vec n, arma::vec eadxlgd, arma::vec pd_c)
+double Credit_portfolio::K1_secur(double s, arma::vec * n, LStates * eadxlgd, Scenario * pd_c)
 {
     double k1 = 0;
     size_t jj = 0;
@@ -1782,7 +1675,7 @@ double Credit_portfolio::K1_secur(double s, arma::vec n, arma::vec eadxlgd, arma
         double k1p = 0;
         for (size_t kk = 0; kk < ii->size(); kk++)
         {
-            k1p += saddle::K1(s, n[jj], eadxlgd[jj], pd_c[jj]);
+            k1p += saddle::K1(s, n->at(jj), eadxlgd->at(jj), pd_c->at(jj));
             jj++;
         }
 
@@ -1804,7 +1697,7 @@ double Credit_portfolio::K1_secur(double s, arma::vec n, arma::vec eadxlgd, arma
     return k1;
 }
 
-arma::vec Credit_portfolio::K1_secur_vec(double s, arma::vec n, arma::vec eadxlgd, arma::vec pd_c)
+arma::vec Credit_portfolio::K1_secur_vec(double s, arma::vec * n, LStates * eadxlgd, Scenario * pd_c)
 {
     arma::vec k1(this->size(), arma::fill::zeros);
     size_t jj = 0;
@@ -1814,7 +1707,7 @@ arma::vec Credit_portfolio::K1_secur_vec(double s, arma::vec n, arma::vec eadxlg
     {
         for (size_t kk = 0; kk < ii->size(); kk++)
         {
-            k1.at(pp) += saddle::K1(s, n[jj], eadxlgd[jj], pd_c[jj]);
+            k1.at(pp) += saddle::K1(s, n->at(jj), eadxlgd->at(jj), pd_c->at(jj));
             jj++;
         }
 
@@ -1837,63 +1730,34 @@ arma::vec Credit_portfolio::K1_secur_vec(double s, arma::vec n, arma::vec eadxlg
     return k1;
 }
 
-double Credit_portfolio::K2(double s, arma::vec n, arma::vec eadxlgd, arma::vec pd_c)
+double Credit_portfolio::K2(double s, arma::vec * n, LStates * eadxlgd, Scenario * pd_c)
 {
     double k2 = 0;
 
-    for (size_t ii = 0; ii < n.size(); ii++)
+    for (size_t ii = 0; ii < n->size(); ii++)
     {
-        k2 += saddle::K2(s, n[ii], eadxlgd[ii], pd_c[ii]);
+        k2 += saddle::K2(s, n->at(ii), eadxlgd->at(ii), pd_c->at(ii));
     }
 
     return k2;
 }
 
-std::tuple<double, double, double> Credit_portfolio::K012(double s, arma::vec n, arma::vec eadxlgd, arma::vec pd_c)
+std::tuple<double, double, double> Credit_portfolio::K012(double s, arma::vec * n, LStates * eadxlgd, Scenario * pd_c)
 {
-    std::tuple<double, double, double> k012(0, 0, 0);
-
-    double dnum, dden, k1;
-
-    for (size_t ii = 0; ii < n.size(); ii++)
-    {
-        dnum = saddle::num(s, eadxlgd[ii], pd_c[ii]);
-        dden = saddle::den(s, eadxlgd[ii], pd_c[ii]);
-        k1 = dnum / dden;
-
-        std::get<0>(k012) += n[ii] * (log(dden) + (s < 0 ? 0 : s *  eadxlgd[ii]));
-        std::get<1>(k012) += n[ii] * k1;
-        std::get<2>(k012) += n[ii] * (k1 * eadxlgd[ii] - pow(k1, 2));
-    }
-
-    return k012;
+    return saddle::K012(s, n, eadxlgd, pd_c);
 }
 
-std::tuple<double, double>         Credit_portfolio::K12(double  s, arma::vec n, arma::vec eadxlgd, arma::vec pd_c)
+std::tuple<double, double>         Credit_portfolio::K12(double s, arma::vec * n, LStates * eadxlgd, Scenario * pd_c)
 {
-    std::tuple<double, double> k12(0, 0);
-
-    double dnum, dden, k1;
-
-    for (size_t ii = 0; ii < n.size(); ii++)
-    {
-        dnum = saddle::num(s, eadxlgd[ii], pd_c[ii]);
-        dden = saddle::den(s, eadxlgd[ii], pd_c[ii]);
-        k1 = dnum / dden;
-
-        std::get<0>(k12) += n[ii] * k1;
-        std::get<1>(k12) += n[ii] * (k1 * eadxlgd[ii] - pow(k1, 2));
-    }
-
-    return k12;
+    return saddle::K12(s, n, eadxlgd, pd_c);
 }
 
 
-std::tuple<double, double>         Credit_portfolio::K12_secur(double  s, arma::vec n, arma::vec eadxlgd, arma::vec pd_c)
+std::tuple<double, double>         Credit_portfolio::K12_secur(double s, arma::vec *n, LStates *eadxlgd, Scenario *pd_c)
 {
     std::tuple<double, double> k12(0, 0);
 
-    double dnum, dden, k1;
+    double dnum, dnum2, dden, k1;
     size_t jj = 0;
 
     for (auto &ii: *(this))
@@ -1901,12 +1765,13 @@ std::tuple<double, double>         Credit_portfolio::K12_secur(double  s, arma::
         double k1p = 0;
         for (size_t kk = 0; kk < ii->size(); kk++)
         {
-            dnum = saddle::num(s, eadxlgd.at(jj), pd_c.at(jj));
-            dden = saddle::den(s, eadxlgd.at(jj), pd_c.at(jj));
-            k1 = n.at(jj) * dnum / dden;
+            dnum = saddle::num(s, eadxlgd->at(jj), pd_c->at(jj));
+            dnum2 = saddle::num(s, eadxlgd->at(jj), pd_c->at(jj));
+            dden = saddle::den(s, eadxlgd->at(jj), pd_c->at(jj));
+            k1 = n->at(jj) * dnum / dden;
 
-            k1p = n.at(jj) * k1;
-            std::get<1>(k12) += n.at(jj) * (k1p * eadxlgd.at(jj) - pow(k1, 2));
+            k1p = n->at(jj) * k1;
+            std::get<1>(k12) += n->at(jj) * ((dnum2 / dden) - pow(k1, 2));
             jj++;
         }
 
@@ -1930,12 +1795,12 @@ std::tuple<double, double>         Credit_portfolio::K12_secur(double  s, arma::
     return k12;
 }
 
-double Credit_portfolio::fitSaddle_n(double s, double loss, arma::vec n, arma::vec eadxlgd, arma::vec pd_c)
+double Credit_portfolio::fitSaddle_n(double s, double loss, arma::vec * n, LStates * eadxlgd, Scenario * pd_c)
 {
     return this->K1(s, n, eadxlgd, pd_c) - loss;
 }
 
-double Credit_portfolio::getSaddle(double loss, arma::vec n, arma::vec eadxlgd, arma::vec pd_c, double s0, double a, double b, double tol)
+double Credit_portfolio::getSaddle(double loss, arma::vec * n, LStates * eadxlgd, Scenario * pd_c, double s0, double a, double b, double tol)
 {
     std::tuple<double, double> sfx = getSaddleNewton(loss, n, eadxlgd, pd_c, s0, tol);
 
@@ -1953,12 +1818,12 @@ double Credit_portfolio::getSaddle(double loss, arma::vec n, arma::vec eadxlgd, 
     return std::get<0>(sfx);
 }
 
-double Credit_portfolio::getSaddleBrent(double loss, arma::vec n, arma::vec eadxlgd, arma::vec pd_c, double a, double b, double xtol, double rtol)
+double Credit_portfolio::getSaddleBrent(double loss, arma::vec * n, LStates * eadxlgd, Scenario * pd_c, double a, double b, double xtol, double rtol)
 {
     return CreditRisk::Optim::root_Brentq(&Credit_portfolio::fitSaddle_n, *this, a, b, xtol, rtol, 100, loss, n, eadxlgd, pd_c);
 }
 
-std::tuple<double, double> Credit_portfolio::getSaddleNewton(double loss, arma::vec n, arma::vec eadxlgd, arma::vec pd_c, double s0, double tol)
+std::tuple<double, double> Credit_portfolio::getSaddleNewton(double loss, arma::vec * n, LStates * eadxlgd, Scenario * pd_c, double s0, double tol)
 {
     std::tuple<double, double> k12(this->K12(s0, n, eadxlgd, pd_c));
     double fs(std::get<0>(k12) - loss);
@@ -1976,12 +1841,12 @@ std::tuple<double, double> Credit_portfolio::getSaddleNewton(double loss, arma::
     return std::make_tuple(s0, fs);
 }
 
-double Credit_portfolio::fitSaddle_n_secur(double s, double loss, arma::vec n, arma::vec eadxlgd, arma::vec pd_c)
+double Credit_portfolio::fitSaddle_n_secur(double s, double loss, arma::vec * n, LStates * eadxlgd, Scenario * pd_c)
 {
     return this->K1_secur(s, n, eadxlgd, pd_c) - loss;
 }
 
-double Credit_portfolio::getSaddle_secur(double loss, arma::vec n, arma::vec eadxlgd, arma::vec pd_c, double s0, double a, double b, double tol)
+double Credit_portfolio::getSaddle_secur(double loss, arma::vec * n, LStates * eadxlgd, Scenario * pd_c, double s0, double a, double b, double tol)
 {
     std::tuple<double, double> sfx = getSaddleNewton_secur(loss, n, eadxlgd, pd_c, s0, tol);
 
@@ -1999,12 +1864,12 @@ double Credit_portfolio::getSaddle_secur(double loss, arma::vec n, arma::vec ead
     return std::get<0>(sfx);
 }
 
-double Credit_portfolio::getSaddleBrent_secur(double loss, arma::vec n, arma::vec eadxlgd, arma::vec pd_c, double a, double b, double xtol, double rtol)
+double Credit_portfolio::getSaddleBrent_secur(double loss, arma::vec * n, LStates * eadxlgd, Scenario * pd_c, double a, double b, double xtol, double rtol)
 {
     return CreditRisk::Optim::root_Brentq(&Credit_portfolio::fitSaddle_n_secur, *this, a, b, xtol, rtol, 100, loss, n, eadxlgd, pd_c);
 }
 
-std::tuple<double, double> Credit_portfolio::getSaddleNewton_secur(double loss, arma::vec n, arma::vec eadxlgd, arma::vec pd_c, double s0, double tol)
+std::tuple<double, double> Credit_portfolio::getSaddleNewton_secur(double loss, arma::vec * n, LStates * eadxlgd, Scenario * pd_c, double s0, double tol)
 {
     std::tuple<double, double> k12(this->K12_secur(s0, n, eadxlgd, pd_c));
     double fs(std::get<0>(k12) - loss);
@@ -2022,82 +1887,21 @@ std::tuple<double, double> Credit_portfolio::getSaddleNewton_secur(double loss, 
     return std::make_tuple(s0, fs);
 }
 
-double Credit_portfolio::K (double s, arma::vec pd_c)
-{
-    double k = 0;
-
-    for (size_t ii = 0; ii < this->n; ii++) k+= (*this)[ii]->K(s, pd_c, ii);
-
-    return k;
-}
-
-double Credit_portfolio::K1(double s, arma::vec pd_c)
-{
-    double k1 = 0;
-
-    for (size_t ii = 0; ii < this->n; ii++) k1+= (*this)[ii]->K1(s, pd_c, ii);
-
-    return k1;
-}
-
-double Credit_portfolio::K2(double s, arma::vec pd_c)
-{
-    double k2 = 0;
-
-    for (size_t ii = 0; ii < this->n; ii++) k2+= (*this)[ii]->K2(s, pd_c, ii);
-
-    return k2;
-}
-
-std::tuple<double, double, double> Credit_portfolio::K012(double s, arma::vec pd_c)
-{
-    std::tuple<double, double, double> k012(0, 0, 0);
-
-    for (size_t ii = 0; ii < this->n; ii++)
-    {
-        std::tuple<double, double, double> k = (*this)[ii]->K012(s, pd_c, ii);
-        std::get<0>(k012) += std::get<0>(k);
-        std::get<1>(k012) += std::get<1>(k);
-        std::get<2>(k012) += std::get<2>(k);
-    }
-
-    return k012;
-}
-
-std::tuple<double, double> Credit_portfolio::K12(double  s, arma::vec pd_c)
-{
-    std::tuple<double, double> k12(0, 0);
-
-    for (size_t ii = 0; ii < this->n; ii++)
-    {
-        std::tuple<double, double> k = (*this)[ii]->K12(s, pd_c, ii);
-        std::get<0>(k12) += std::get<0>(k);
-        std::get<1>(k12) += std::get<1>(k);
-    }
-
-    return k12;
-}
-
-double Credit_portfolio::fitSaddle(double s, double loss, arma::vec pd_c)
-{
-    return pow(this->K1(s, pd_c) - loss, 2);
-}
-
-
 /*
  *
  */
 
-void Credit_portfolio::saddle_point_pd(double loss, arma::vec * n, arma::vec * eadxlgd, arma::mat * pd_c, CreditRisk::Integrator::PointsAndWeigths * points, arma::vec * saddle_points, size_t id, size_t p)
+void Credit_portfolio::saddle_point(double loss, arma::vec * n, LStates * eadxlgd, std::vector<Scenario> * pd_c,
+                                    CreditRisk::Integrator::PointsAndWeigths * points, arma::vec * saddle_points, size_t id, size_t p)
 {
     double s = -1000, prob;
     std::tuple<double, double, double> k012;
 
     while (id < points->points.size())
     {
-        s = getSaddle(loss, *n, *eadxlgd, pd_c->col(id), s);
+        s = getSaddle(loss, n, eadxlgd, &pd_c->at(id), s);
 
-        k012 = K012(s, *n, *eadxlgd, pd_c->col(id));
+        k012 = this->K012(s, n, eadxlgd, &pd_c->at(id));
 
         prob = exp(std::get<0>(k012) - s * std::get<1>(k012) + 0.5 * std::get<2>(k012) * pow(s, 2)) * CreditRisk::Utils::pnorm(-sqrt(std::get<2>(k012) * pow(s, 2)));
         prob = isnan(prob) ? 0 : prob;
@@ -2109,15 +1913,17 @@ void Credit_portfolio::saddle_point_pd(double loss, arma::vec * n, arma::vec * e
     }
 }
 
-double Credit_portfolio::cdf(double loss, arma::vec n, arma::vec eadxlgd, arma::mat pd_c, CreditRisk::Integrator::PointsAndWeigths * points, TP::ThreadPool * pool)
+double Credit_portfolio::cdf(double loss, arma::vec *n, LStates *eadxlgd, std::vector<Scenario> * pd_c,
+                             CreditRisk::Integrator::PointsAndWeigths * points, TP::ThreadPool * pool)
 {
     arma::vec prob(points->points.size());
+    //this->saddle_point(loss, n, eadxlgd, pd_c, points, &prob, 0, 1);
 
     vector<std::future<void>> futures(pool->size());
 
     for (size_t ii = 0; ii < pool->size(); ii++)
     {
-        futures.at(ii) = pool->post(&Credit_portfolio::saddle_point_pd, this, loss, &n, &eadxlgd, &pd_c, points, &prob, ii, pool->size());
+        futures.at(ii) = pool->post(&Credit_portfolio::saddle_point, this, loss, n, eadxlgd, pd_c, points, &prob, ii, pool->size());
     }
 
     for (auto & ii: futures)
@@ -2128,18 +1934,20 @@ double Credit_portfolio::cdf(double loss, arma::vec n, arma::vec eadxlgd, arma::
     return arma::accu(prob);
 }
 
-double Credit_portfolio::fitQuantile_pd(double loss, double prob, arma::vec n, arma::vec eadxlgd, arma::mat pd_c, CreditRisk::Integrator::PointsAndWeigths & points, TP::ThreadPool * pool)
+double Credit_portfolio::fitQuantile(double loss, double prob, arma::vec * n, LStates * eadxlgd, std::vector<Scenario> * pd_c,
+                                     CreditRisk::Integrator::PointsAndWeigths & points, TP::ThreadPool * pool)
 {
     return this->cdf(loss, n, eadxlgd, pd_c, &points, pool) - prob;
 }
 
-double Credit_portfolio::quantile(double prob, arma::vec n, arma::vec eadxlgd, arma::mat pd_c, CreditRisk::Integrator::PointsAndWeigths * points, TP::ThreadPool * pool, double xtol, double rtol)
+double Credit_portfolio::quantile(double prob, arma::vec * n, LStates * eadxlgd, std::vector<Scenario> * pd_c,
+                                  CreditRisk::Integrator::PointsAndWeigths * points, TP::ThreadPool * pool, double xtol, double rtol)
 {
     // return root_secant(&Credit_portfolio::fitQuantile_pd, *this, 0.01, 0.99, 1e-9, prob, n, eadxlgd, pd_c, *points, p);
-    return CreditRisk::Optim::root_Brentq(&Credit_portfolio::fitQuantile_pd, *this, 0.01, 0.5, xtol, rtol, 100, prob, n, eadxlgd, pd_c, *points, pool);
+    return CreditRisk::Optim::root_Brentq(&Credit_portfolio::fitQuantile, *this, 0.01, 0.9, xtol, rtol, 100, prob, n, eadxlgd, pd_c, *points, pool);
 }
 
-void Credit_portfolio::contrib_without_secur(double loss, arma::vec * n, arma::vec * eadxlgd, arma::mat * pd_c, arma::vec * con,
+void Credit_portfolio::contrib_without_secur(double loss, arma::vec * n, LStates * eadxlgd, std::vector<Scenario> * pd_c, arma::vec * con,
                                              arma::vec * c_contrib, CreditRisk::Integrator::PointsAndWeigths * points, size_t id, size_t p)
 {
     double s = -1000, i_contrib;
@@ -2147,15 +1955,15 @@ void Credit_portfolio::contrib_without_secur(double loss, arma::vec * n, arma::v
 
     while (id < points->points.size())
     {
-        s = getSaddle(loss, *n, *eadxlgd, pd_c->col(id), s);
+        s = getSaddle(loss, n, eadxlgd, &pd_c->at(id), s);
 
-        k012 = K012(s, *n, *eadxlgd, pd_c->col(id));
+        k012 = K012(s, n, eadxlgd, &pd_c->at(id));
 
         (*con)[id] = points->weigths[id] * (exp(std::get<0>(k012) - std::get<1>(k012) * s) / (sqrt(std::get<2>(k012))));
 
         for (size_t ii = 0; ii < c_contrib->size(); ii++)
         {
-            i_contrib = (*con)[id] * saddle::K1(s, 1, (*eadxlgd)[ii], pd_c->at(ii, id));
+            i_contrib = (*con)[id] * saddle::K1(s, 1, eadxlgd->at(ii), pd_c->at(id).at(ii));
             mu_p.lock();
             (*c_contrib)[ii] += i_contrib;
             mu_p.unlock();
@@ -2165,16 +1973,19 @@ void Credit_portfolio::contrib_without_secur(double loss, arma::vec * n, arma::v
     }
 }
 
-arma::vec Credit_portfolio::getContrib_without_secur(double loss,  arma::vec n, arma::vec eadxlgd, arma::mat pd_c, CreditRisk::Integrator::PointsAndWeigths * points, TP::ThreadPool * pool)
+arma::vec Credit_portfolio::getContrib_without_secur(double loss, arma::vec * n, LStates * eadxlgd, std::vector<Scenario> * pd_c,
+                                                     CreditRisk::Integrator::PointsAndWeigths * points, TP::ThreadPool * pool)
 {
     arma::vec con(points->points.size(), arma::fill::zeros);
     arma::vec c_contrib(this->getN(), arma::fill::zeros);
 
     vector<std::future<void>> futures(pool->size());
 
+    //this->contrib_without_secur(loss, n, eadxlgd, pd_c, &con, &c_contrib, points, 0, 1);
+
     for (size_t ii = 0; ii < pool->size(); ii++)
     {
-        futures.at(ii) = pool->post(&Credit_portfolio::contrib_without_secur, this, loss, &n, &eadxlgd, &pd_c, &con, &c_contrib, points, ii, pool->size());
+        futures.at(ii) = pool->post(&Credit_portfolio::contrib_without_secur, this, loss, n, eadxlgd, pd_c, &con, &c_contrib, points, ii, pool->size());
     }
 
     for (auto & ii: futures)
@@ -2189,7 +2000,7 @@ arma::vec Credit_portfolio::getContrib_without_secur(double loss,  arma::vec n, 
     return c_contrib;
 }
 
-void Credit_portfolio::contrib(double loss, arma::vec * n, arma::vec * eadxlgd, arma::mat * pd_c, arma::vec * con,
+void Credit_portfolio::contrib(double loss, arma::vec * n, LStates * eadxlgd, std::vector<Scenario> * pd_c, arma::vec * con,
                                arma::vec * c_contrib, Integrator::PointsAndWeigths * points, size_t id, size_t p)
 {
     double s = -1000, i_contrib;
@@ -2199,21 +2010,21 @@ void Credit_portfolio::contrib(double loss, arma::vec * n, arma::vec * eadxlgd, 
 
     while (id < points->points.size())
     {
-        s = getSaddle_secur(loss, *n, *eadxlgd, pd_c->col(id), s);
+        s = getSaddle_secur(loss, n, eadxlgd, &pd_c->at(id), s);
 
-        k1s_port = this->K1_secur_vec(s, *n, *eadxlgd, pd_c->col(id));
-        ts = this->get_t_secur(s, *n, *eadxlgd, pd_c->col(id), k1s_port, points->points.at(id));
+        k1s_port = this->K1_secur_vec(s, n, eadxlgd, &pd_c->at(id));
+        ts = this->get_t_secur(s, n, eadxlgd, &pd_c->at(id), k1s_port, points->points.at(id));
         // mirar
 
-        pd_c->col(id) = this->pd_c(ts, points->points.at(id));
+        pd_c->at(id) = this->pd_c(ts, points->points.at(id));
 
-        k012 = K012(s, *n, *eadxlgd, pd_c->col(id));
+        k012 = K012(s, n, eadxlgd, &pd_c->at(id));
 
         (*con)[id] = points->weigths[id] * (exp(std::get<0>(k012) - std::get<1>(k012) * s) / (sqrt(std::get<2>(k012))));
 
         for (size_t ii = 0; ii < c_contrib->size(); ii++)
         {
-            i_contrib = (*con)[id] * saddle::K1(s, 1, (*eadxlgd)[ii], pd_c->at(ii, id));
+            i_contrib = (*con)[id] * saddle::K1(s, 1, eadxlgd->at(ii), pd_c->at(id).at(ii));
             //printf("%.20f\n", saddle::K1(s, 1, (*eadxlgd)[ii], (*pd_c)[ii]));
             mu_p.lock();
             (*c_contrib)[ii] += i_contrib;
@@ -2224,7 +2035,8 @@ void Credit_portfolio::contrib(double loss, arma::vec * n, arma::vec * eadxlgd, 
     }
 }
 
-arma::vec Credit_portfolio::getContrib(double loss,  arma::vec n, arma::vec eadxlgd, arma::mat pd_c, CreditRisk::Integrator::PointsAndWeigths * points, TP::ThreadPool * pool)
+arma::vec Credit_portfolio::getContrib(double loss, arma::vec * n, LStates * eadxlgd, std::vector<Scenario> * pd_c,
+                                       CreditRisk::Integrator::PointsAndWeigths * points, TP::ThreadPool * pool)
 {
     arma::vec con(points->points.size(), arma::fill::zeros);
     arma::vec c_contrib(this->getN(), arma::fill::zeros);
@@ -2233,7 +2045,7 @@ arma::vec Credit_portfolio::getContrib(double loss,  arma::vec n, arma::vec eadx
 
     for (size_t ii = 0; ii < pool->size(); ii++)
     {
-        futures.at(ii) = pool->post(&Credit_portfolio::contrib, this, loss, &n, &eadxlgd, &pd_c, &con, &c_contrib, points, ii, pool->size());
+        futures.at(ii) = pool->post(&Credit_portfolio::contrib, this, loss, n, eadxlgd, pd_c, &con, &c_contrib, points, ii, pool->size());
     }
 
     for (auto & ii: futures)
@@ -2248,7 +2060,7 @@ arma::vec Credit_portfolio::getContrib(double loss,  arma::vec n, arma::vec eadx
     return c_contrib;
 }
 
-double Credit_portfolio::EVA(arma::vec eadxlgd, arma::vec contrib)
+double Credit_portfolio::EVA(LStates *eadxlgd, arma::vec contrib)
 {
     size_t jj(0);
     double eva = 0;
@@ -2257,7 +2069,7 @@ double Credit_portfolio::EVA(arma::vec eadxlgd, arma::vec contrib)
     {
         for (auto & kk: *ii)
         {
-            eva += kk.EVA(eadxlgd[jj], contrib[jj], ii->CtI, ii->rf, ii->tax, ii->HR);
+            eva += kk.EVA(eadxlgd->at(jj).back(), contrib[jj], ii->CtI, ii->rf, ii->tax, ii->HR);
             jj++;
         }
     }
@@ -2265,15 +2077,16 @@ double Credit_portfolio::EVA(arma::vec eadxlgd, arma::vec contrib)
     return eva;
 }
 
-arma::vec Credit_portfolio::minimize_EAD_constant(arma::vec n, arma::mat pd_c, CreditRisk::Integrator::PointsAndWeigths * points,
+/*
+arma::vec Credit_portfolio::minimize_EAD_constant(arma::vec * n, std::vector<Scenario> * pd_c, CreditRisk::Integrator::PointsAndWeigths * points,
                                                   TP::ThreadPool * pool, double total_ead_var, std::vector<double> x0,
                                                   std::vector<double> lower, std::vector<double> upper)
 {
     struct Arg_data
     {
         CreditRisk::Credit_portfolio * credit_portfolio;
-        arma::vec ns;
-        arma::mat pd_c;
+        arma::vec * ns;
+        std::vector<Scenario> * pd_c;
         CreditRisk::Integrator::PointsAndWeigths * points;
         std::vector<double> EAD_p;
         double total_ead_var, lower, upper, new_T_EAD;
@@ -2281,7 +2094,7 @@ arma::vec Credit_portfolio::minimize_EAD_constant(arma::vec n, arma::mat pd_c, C
         size_t iter;
 
         Arg_data(CreditRisk::Credit_portfolio * credit_portfolio,
-                 arma::vec n, arma::mat pd_c,
+                 arma::vec * n, std::vector<Scenario> * pd_c,
                  CreditRisk::Integrator::PointsAndWeigths * points,
                  double total_ead_var, double lower, double upper, TP::ThreadPool * pool) :
             credit_portfolio(credit_portfolio), ns(n),
@@ -2344,7 +2157,7 @@ arma::vec Credit_portfolio::minimize_EAD_constant(arma::vec n, arma::mat pd_c, C
                 for (size_t hh = 0; hh < ii->size(); hh++)
                 {
                     std_eadsxlgds[jj] = (*ii)[hh].ead * (1 + x[kk]) * (*ii)[hh].lgd_addon;
-                    T_EADxLGD += std_eadsxlgds[jj] * this->ns[jj];
+                    T_EADxLGD += std_eadsxlgds.at(jj) * this->ns->at(jj);
                     jj++;
                 }
                 kk++;
@@ -2367,7 +2180,7 @@ arma::vec Credit_portfolio::minimize_EAD_constant(arma::vec n, arma::mat pd_c, C
                 for (size_t hh = 0; hh < ii->size(); hh++)
                 {
                     std_eadsxlgds[jj] = (*ii)[hh].ead * (1 + x[kk]) * (*ii)[hh].lgd_addon;
-                    T_EADxLGD += std_eadsxlgds[jj] * this->ns[jj];
+                    T_EADxLGD += std_eadsxlgds[jj] * this->ns->at(jj);
                     jj++;
                 }
                 kk++;
@@ -2453,5 +2266,6 @@ arma::vec Credit_portfolio::minimize_EAD_constant(arma::vec n, arma::mat pd_c, C
 
     return res;
 }
+*/
 
 }

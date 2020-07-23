@@ -227,6 +227,11 @@ namespace saddle
         return CreditRisk::Utils::pnorm((p - (beta * cwi)) / idio);
     }
 
+    double p_c(double t, double p, double beta, double idio, double cwi)
+    {
+        return CreditRisk::saddle::p_c(CreditRisk::Utils::qnorm(1 - pow(1 - p, t)), beta, idio, cwi);
+    }
+
     arma::vec p_states_c(arma::vec & p_states, double npd, double beta, double idio, double cwi)
     {
         arma::vec pp(p_states.size() + 2);
@@ -246,38 +251,72 @@ namespace saddle
         return pp;
     }
 
-    double num(double s, arma::vec l_states, arma::vec p_states)
+    arma::vec p_states_c(double t, arma::vec & p_states, double npd, double beta, double idio, double cwi)
     {
-        return (s < 0) ?
-                    arma::accu(p_states * l_states * exp(s * l_states)) :
-                    arma::accu(p_states * l_states * exp(s * (l_states - l_states.back())));
+        arma::vec pp(p_states.size() + 2);
+
+        double pb = p_c(t, npd, beta, idio, cwi);
+        pp.back() = pb;
+        double pa = pb;
+
+        for (size_t ii =  p_states.size(); ii > 0; ii--)
+        {
+            pa = CreditRisk::Utils::pnorm((p_states.at(ii - 1) - (beta * cwi)) / idio);
+            pp.at(ii) = pa - pb;
+            pb = pa;
+        }
+        pp.front() = 1 - pa;
+
+        return pp;
     }
 
-    double num2(double s, arma::vec l_states, arma::vec p_states)
+    double num(double s, arma::vec & l_states, arma::vec & p_states)
     {
-        return (s < 0) ?
-                    arma::accu(p_states * l_states * exp(s * l_states)) :
-                    arma::accu(p_states * pow(l_states, 2) * exp(s * (l_states - l_states.back())));
+        double num = 0;
+
+        for (size_t ii = 1; ii < l_states.size(); ii++)
+        {
+            num += p_states.at(ii) * l_states.at(ii) * exp(s * (l_states.at(ii) - (s > 0) * l_states.back()));
+        }
+
+        return num;
     }
 
-    double den(double s, arma::vec l_states, arma::vec p_states)
+    double num2(double s, arma::vec & l_states, arma::vec & p_states)
     {
-        return (s < 0) ?
-                    arma::accu(p_states * exp(s * l_states)) :
-                    arma::accu(p_states * exp(s * (l_states - l_states.back())));
+        double num2 = 0;
+
+        for (size_t ii = 1; ii < l_states.size(); ii++)
+        {
+            num2 += p_states.at(ii) * pow(l_states.at(ii), 2) * exp(s * (l_states.at(ii) - (s > 0) * l_states.back()));
+        }
+
+        return num2;
     }
 
-    double K(double s, unsigned long n, arma::vec l_states, arma::vec p_states)
+    double den(double s, arma::vec & l_states, arma::vec & p_states)
+    {
+        double den = 0;
+
+        for (size_t ii = 0; ii < l_states.size(); ii++)
+        {
+            den += p_states.at(ii) * exp(s * (l_states.at(ii) - (s > 0) * l_states.back()));
+        }
+
+        return den;
+    }
+
+    double K(double s, unsigned long n, arma::vec & l_states, arma::vec & p_states)
     {
         return n * log(den(s, l_states, p_states)) + (s < 0 ? 0 : s * l_states.back());
     }
 
-    double K1(double s, unsigned long n, arma::vec l_states, arma::vec p_states)
+    double K1(double s, unsigned long n, arma::vec & l_states, arma::vec & p_states)
     {
         return n * num(s, l_states, p_states) / den(s, l_states, p_states);
     }
 
-    double K2(double s, unsigned long n, arma::vec l_states, arma::vec p_states)
+    double K2(double s, unsigned long n, arma::vec & l_states, arma::vec & p_states)
     {
         double dnum(num(s, l_states, p_states)), dden(den(s, l_states, p_states)),
                 dnum2(num2(s, l_states, p_states));
@@ -285,6 +324,7 @@ namespace saddle
         return n * (dnum2 / dden - (dnum * dnum) / (dden * dden));
     }
 
+    /*
     double num(double s, double _le, double pd_c)
     {
         return (s < 0) ? pd_c * _le * exp(s * _le) : pd_c * _le;
@@ -309,45 +349,126 @@ namespace saddle
 
         return n * ((dnum * _le) / dden - (dnum * dnum) / (dden * dden));
     }
+    */
 
-    std::tuple<double, double, double> K012(double s, arma::vec n, arma::vec eadxlgd, arma::vec pd_c)
+    /*
+    std::tuple<double, double, double> K012(double s, arma::vec * n, LStates * eadxlgd, Scenario * pd_c)
     {
         std::tuple<double, double, double> k012(0, 0, 0);
 
-        double dnum, dden, k1;
+        double dnum, dnum2, dden, k1;
 
-        for (size_t ii = 0; ii < n.size(); ii++)
+        for (size_t ii = 0; ii < n->size(); ii++)
         {
-            dnum = saddle::num(s, eadxlgd[ii], pd_c[ii]);
-            dden = saddle::den(s, eadxlgd[ii], pd_c[ii]);
+            dden = saddle::den(s, eadxlgd->at(ii), pd_c->at(ii));
+            dnum = saddle::num(s, eadxlgd->at(ii), pd_c->at(ii));
+            dnum2 = saddle::num2(s, eadxlgd->at(ii), pd_c->at(ii));
             k1 = dnum / dden;
 
-            std::get<0>(k012) += n[ii] * (log(dden) + (s < 0 ? 0 : s *  eadxlgd[ii]));
-            std::get<1>(k012) += n[ii] * k1;
-            std::get<2>(k012) += n[ii] * (k1 * eadxlgd[ii] - pow(k1, 2));
+            std::get<0>(k012) += n->at(ii) * (log(dden) + (s < 0 ? 0 : s * eadxlgd->at(ii).back()));
+            std::get<1>(k012) += n->at(ii) * k1;
+            std::get<2>(k012) += n->at(ii) * ((dnum2 / dden) - pow(k1, 2));
         }
 
         return k012;
     }
 
-    std::tuple<double, double>         K12(double  s, arma::vec n, arma::vec eadxlgd, arma::vec pd_c)
+    std::tuple<double, double>         K12(double  s, arma::vec * n, LStates * eadxlgd, Scenario * pd_c)
     {
         std::tuple<double, double> k12(0, 0);
 
-        double dnum, dden, k1;
+        double dnum, dnum2, dden, k1;
 
-        for (size_t ii = 0; ii < n.size(); ii++)
+        for (size_t ii = 0; ii < n->size(); ii++)
         {
-            dnum = saddle::num(s, eadxlgd[ii], pd_c[ii]);
-            dden = saddle::den(s, eadxlgd[ii], pd_c[ii]);
+            dnum = saddle::num(s, eadxlgd->at(ii), pd_c->at(ii));
+            dden = saddle::den(s, eadxlgd->at(ii), pd_c->at(ii));
+            dnum2 = saddle::num2(s, eadxlgd->at(ii), pd_c->at(ii));
             k1 = dnum / dden;
 
-            std::get<0>(k12) += n[ii] * k1;
-            std::get<1>(k12) += n[ii] * (k1 * eadxlgd[ii] - pow(k1, 2));
+            std::get<0>(k12) += n->at(ii) * k1;
+            std::get<1>(k12) += n->at(ii) * ((dnum2 / dden) - pow(k1, 2));
         }
 
         return k12;
     }
+    */
+
+    std::tuple<double, double, double> K012(double s, arma::vec * n, LStates * eadxlgd, Scenario * pd_c)
+    {
+        std::tuple<double, double, double> k012(0, 0, 0);
+
+        double dnum, dden, dnum2, den, num;
+
+        auto ii = n->begin();
+        auto ll = eadxlgd->begin();
+        auto pp = pd_c->begin();
+
+        while (ii != n->end())
+        {
+            dden = pp->front() * exp(s * (ll->front() - ((s > 0) * ll->back())));
+            dnum = 0;
+            dnum2 = 0;
+
+            for (auto jj = ll->begin() + 1, kk = pp->begin() + 1; jj != ll->end(); jj++, kk++)
+            {
+                den = (*kk) * exp(s * ((*jj) - ((s > 0) * ll->back())));
+                num = den * (*jj);
+
+                dden += den;
+                dnum += num;
+                dnum2 += num * (*jj);
+            }
+
+            std::get<0>(k012) += (*ii) * (log(dden) + ((s > 0) * s * ll->back()));
+            std::get<1>(k012) += (*ii) * (dnum / dden);
+            std::get<2>(k012) += (*ii) * (dnum2 / dden - (dnum * dnum) / (dden * dden));
+
+            ii++;
+            ll++;
+            pp++;
+        }
+
+        return k012;
+    }
+
+    std::tuple<double, double>         K12(double  s, arma::vec * n, LStates * eadxlgd, Scenario * pd_c)
+    {
+        std::tuple<double, double> k12(0, 0);
+
+        double dnum, dden, dnum2, den, num;
+
+        auto ii = n->begin();
+        auto ll = eadxlgd->begin();
+        auto pp = pd_c->begin();
+
+        while (ii != n->end())
+        {
+            dden = pp->front() * exp(s * (ll->front() - ((s > 0) * ll->back())));
+            dnum = 0;
+            dnum2 = 0;
+
+            for (auto jj = ll->begin() + 1, kk = pp->begin() + 1; jj != ll->end(); jj++, kk++)
+            {
+                den = (*kk) * exp(s * ((*jj) - ((s > 0) * ll->back())));
+                num = den * (*jj);
+
+                dden += den;
+                dnum += num;
+                dnum2 += num * (*jj);
+            }
+
+            std::get<0>(k12) += (*ii) * (dnum / dden);
+            std::get<1>(k12) += (*ii) * (dnum2 / dden - (dnum * dnum) / (dden * dden));
+
+            ii++;
+            ll++;
+            pp++;
+        }
+
+        return k12;
+    }
+
 }
 
 }

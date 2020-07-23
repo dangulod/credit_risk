@@ -95,7 +95,9 @@ namespace CreditRisk
 
         // Migration
         void setMigration(Transition * tr, Spread * sp, double rf);
+        arma::vec p_states_c(double t, double cwi);
         arma::vec p_states_c(double cwi);
+        arma::vec l_states();
 
         double el();
         double getT(double cwi);
@@ -109,13 +111,6 @@ namespace CreditRisk
         double loss(arma::vec f, unsigned long id, bool migration = true);
         double loss(arma::vec f, double idio, bool migration = true);
         double loss(double cwi, bool migration = true);
-
-        double num(double s, double pd_c);
-        double den(double s, double pd_c);
-
-        double K (double s, double pd_c);
-        double K1(double s, double pd_c);
-        double K2(double s, double pd_c);
 
         double EVA(double eadxlgd, double CeR, double cti, double rf, double tax, double hr);
     };

@@ -160,13 +160,13 @@ double Element::el()
 
 double Element::pd_c(double cwi)
 {
-    return CreditRisk::Utils::pnorm((this->_npd - (this->beta * cwi)) / this->idio);
+    return CreditRisk::saddle::p_c(this->_npd, this->beta, this->idio, cwi);
 }
 
 double Element::pd_c(double t, double cwi)
 {
     if (t == 1) return CreditRisk::saddle::p_c(this->_npd, this->beta, this->idio, cwi);
-    return CreditRisk::saddle::p_c(CreditRisk::Utils::qnorm(1 - pow(1 - this->pd_b, t)), this->beta, this->idio, cwi);
+    return CreditRisk::saddle::p_c(t, this->_npd, this->beta, this->idio, cwi);
 }
 
 void Element::setMigration(Transition *tr, Spread *sp, double rf)
@@ -178,10 +178,37 @@ void Element::setMigration(Transition *tr, Spread *sp, double rf)
     }
 }
 
+arma::vec Element::p_states_c(double t, double cwi)
+{
+    if (t == 1)
+    {
+        return CreditRisk::saddle::p_states_c(this->_states.p_states, this->_npd,
+                                                      this->beta, this->idio, cwi);
+    }
+
+    return CreditRisk::saddle::p_states_c(t, this->_states.p_states, this->_npd,
+                                          this->beta, this->idio, cwi);
+}
+
 arma::vec Element::p_states_c(double cwi)
 {
     return CreditRisk::saddle::p_states_c(this->_states.p_states, this->_npd,
                                           this->beta, this->idio, cwi);
+}
+
+arma::vec Element::l_states()
+{
+    arma::vec pp(this->_states.l_states.size() + 2);
+
+    pp.back() = this->_le;
+
+    for (size_t ii = 0; ii < this->_states.l_states.size(); ii++)
+    {
+        pp.at(ii + 1) = this->_states.l_states.at(ii);
+    }
+    pp.front() = 0;
+
+    return pp;
 }
 
 double Element::loss(double cwi, bool migration)
@@ -189,7 +216,7 @@ double Element::loss(double cwi, bool migration)
     switch (this->mr)
     {
     case Treatment::Retail :
-        return pd_c(cwi) * this->_le;
+        return this->pd_c(cwi) * this->_le;
         break;
     case Treatment::Wholesale:
         if (this->_states.migration() & migration)
@@ -285,29 +312,6 @@ double Element::getT(double cwi)
     }
 
     return log(1 - CreditRisk::Utils::pnorm(cwi)) / log(1 -this->pd_b);
-}
-
-double Element::num(double s, double pd_c)
-{
-    return CreditRisk::saddle::num(s, this->_le, pd_c);
-}
-
-double Element::den(double s, double pd_c)
-{
-    return CreditRisk::saddle::den(s, this->_le, pd_c);
-}
-
-double Element::K(double s, double pd_c)
-{
-    return CreditRisk::saddle::K(s, this->n, this->_le, pd_c);
-}
-double Element::K1(double s, double pd_c)
-{
-    return CreditRisk::saddle::K1(s, this->n, this->_le, pd_c);
-}
-double Element::K2(double s, double pd_c)
-{
-    return CreditRisk::saddle::K2(s, this->n, this->_le, pd_c);
 }
 
 double Element::EVA(double eadxlgd, double CeR, double cti, double rf, double tax, double hr)

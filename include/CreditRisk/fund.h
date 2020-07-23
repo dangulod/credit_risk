@@ -49,8 +49,8 @@ namespace CreditRisk
         arma::vec get_T_at(arma::vec cwi, arma::vec v_t, double tol = 1e-12);
         arma::vec get_T_de(arma::vec cwi, arma::vec v_t, double tol = 1e-12);
 
-        double fit_t_sad(double t, double s, arma::vec n, arma::vec eadxlgd, arma::vec & pd_c, double k1s, double scenario, size_t id);
-        double get_T_saddle(double s, arma::vec n, arma::vec eadxlgd, arma::vec & pd_c, double k1s, double scenario, size_t id);
+        double fit_t_sad(double t, double s, arma::vec * n, LStates * eadxlgd, Scenario * pd_c, double k1s, double scenario, size_t id);
+        double get_T_saddle(double s, arma::vec * n, LStates * eadxlgd, Scenario * pd_c, double k1s, double scenario, size_t id);
 
         void check_fund_data(Fund_data & data, arma::vec f, unsigned long idio_id);
     };

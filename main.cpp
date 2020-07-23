@@ -13,7 +13,47 @@ int main()
     TP::ThreadPool pool(8);
     pool.init();
 
-    //std::string file = "/opt/share/data/ES.json";
+    /*
+    CreditRisk::Credit_portfolio p0 = CreditRisk::Credit_portfolio::from_csv("/opt/share/data/test/Portfolio.csv",
+                                                                             "",
+                                                                             "/opt/share/data/test/counter.csv",
+                                                                             "/opt/share/data/test/cor.csv",
+                                                                             2,
+                                                                             "/opt/share/data/test/transition.csv",
+                                                                             "/opt/share/data/test/spread.csv");
+
+    CreditRisk::Integrator::PointsAndWeigths points = CreditRisk::Integrator::gki();
+
+    auto pd_c = p0.pd_c(points, &pool);
+    arma::vec ns = p0.get_Ns();
+    auto eadxlgd = p0.get_std_states();
+
+    printf("%.20f\n", p0.quantile(0.9995, &ns, eadxlgd.get(), pd_c.get(), &points, &pool));
+
+    arma::vec contrib = p0.getContrib(0.5, &ns, eadxlgd.get(), pd_c.get(), &points, &pool) * p0.T_EADxLGD;
+
+    for (auto ii = contrib.end(); ii != contrib.end() - 5; ii--)
+    {
+        printf("%.20f\n", *ii);
+    }
+    */
+    /*
+    pt::write_json("/opt/share/data/test/test.json", p0.to_ptree());
+
+    arma::mat loss = p0.loss_ru(1e5, 9876543210, &pool, true);
+
+    ofstream file_in2("/tmp/losses.csv");
+
+    for (auto &ii : p0.rus)
+    {
+        file_in2 << ii << ",";
+    }
+    file_in2 << endl;
+    loss.save(file_in2, arma::csv_ascii);
+
+    file_in2.close();
+    */
+
     std::string file = "/opt/share/data/optim/optim.json";
     pt::ptree pt;
     pt::read_json(file, pt);
@@ -21,25 +61,56 @@ int main()
     CreditRisk::Credit_portfolio p0 = CreditRisk::Credit_portfolio::from_ptree(pt);
     CreditRisk::Integrator::PointsAndWeigths points = CreditRisk::Integrator::gki();
 
-    auto pd_c_mig = p0.pd_c_mig(points.points.at(1));
-
-    //auto pd_c_mig = p0.pd_c_mig(points, &pool);
     auto pd_c = p0.pd_c(points, &pool);
+    arma::vec ns = p0.get_Ns();
+    auto eadxlgd = p0.get_std_states();
 
-    std::cout << "===== migration =====" << std::endl;
+    auto dx = std::chrono::high_resolution_clock::now();
 
-    for (size_t ii = 0; ii < 10; ii++)
-    {
-        pd_c_mig.at(ii).t().print();
+    p0.quantile(0.9995, &ns, eadxlgd.get(), pd_c.get(), &points, &pool);
 
-    }
+    auto dy = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> dif = dy - dx;
+    std::cout << dif.count() << " seconds" << std::endl;
 
-    std::cout << "===== No migration =====" << std::endl;
+    std::string file2 = "/opt/share/data/titus/titus.json";
+    pt::read_json(file, pt);
 
-    for (size_t ii = 0; ii < 10; ii++)
-    {
-        std::cout << pd_c.at(ii, 1) << std::endl;
-    }
+    CreditRisk::Credit_portfolio p = CreditRisk::Credit_portfolio::from_ptree(pt);
+    arma::vec loss;
+    arma::mat l;
+
+    dx = std::chrono::high_resolution_clock::now();
+
+    loss = p.loss(1e3, 987654321, &pool);
+
+    dy = std::chrono::high_resolution_clock::now();
+    dif = dy - dx;
+    std::cout << "Loss: " << dif.count() << " seconds" << std::endl;
+
+    dx = std::chrono::high_resolution_clock::now();
+
+    l = p.loss_ru(1e3, 987654321, &pool);
+
+    dy = std::chrono::high_resolution_clock::now();
+    dif = dy - dx;
+    std::cout << "RU: " << dif.count() << " seconds" << std::endl;
+
+    dx = std::chrono::high_resolution_clock::now();
+
+    l = p.loss_portfolio(1e3, 987654321, &pool);
+
+    dy = std::chrono::high_resolution_clock::now();
+    dif = dy - dx;
+    std::cout << "Portfolio: "<< dif.count() << " seconds" << std::endl;
+
+    dx = std::chrono::high_resolution_clock::now();
+
+    l = p.margin_loss(1e3, 987654321, &pool);
+
+    dy = std::chrono::high_resolution_clock::now();
+    dif = dy - dx;
+    std::cout << "Margin: " << dif.count() << " seconds" << std::endl;
 
     /*
     CreditRisk::Transition tr = CreditRisk::Transition::from_csv("/home/dangulo/Downloads/transition.csv");
