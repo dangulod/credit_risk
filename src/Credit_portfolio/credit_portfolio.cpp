@@ -264,18 +264,21 @@ Credit_portfolio Credit_portfolio::from_csv(string Portfolios, string Funds, str
             std::string name;
             std::getline(input, header);
 
-            if (header == "Fund,attachment,detachment" || header == "Fund,attachment,detachment\r")
+            if (header == "Fund,attachment,detachment,purchase" || header == "Fund,attachment,detachment,purchase\r")
             {
                 while (std::getline(input, buffer))
                 {
                     boost::algorithm::split(splitted, buffer, [](char c) { return c == ','; });
 
-                    if (splitted.size() == 7)
+                    if (splitted.size() == 8)
                     {
                         if (name != splitted.at(0))
                         {
                             name = splitted.at(0);
-                            portfolios.push_back(std::make_shared<CreditRisk::Fund>(CreditRisk::Fund(splitted.at(0), 1, atof(splitted.at(1).c_str()), atof(splitted.at(2).c_str()))));
+                            portfolios.push_back(std::make_shared<CreditRisk::Fund>(CreditRisk::Fund(splitted.at(0),
+                                                                                                     atof(splitted.at(3).c_str()),
+                                                                                                     atof(splitted.at(1).c_str()),
+                                                                                                     atof(splitted.at(2).c_str()))));
                         } else
                         {
                             for (auto & ii: portfolios)
@@ -436,14 +439,14 @@ size_t Credit_portfolio::getN()
 
 arma::vec Credit_portfolio::get_std_EADxLGDs()
 {
-    size_t jj(0);
     arma::vec vec(this->getN());
+    auto jj = vec.begin();
 
     for (auto & ii: *this)
     {
-        for (size_t kk = 0; kk < ii->size(); kk++)
+        for (auto & kk: *ii)
         {
-            vec[jj] = (*ii)[kk]._le / (this->T_EADxLGD * (*ii)[kk].n);
+            *jj = kk._le / (this->T_EADxLGD * kk.n);
             jj++;
         }
     }
@@ -453,14 +456,14 @@ arma::vec Credit_portfolio::get_std_EADxLGDs()
 
 std::shared_ptr<LStates> Credit_portfolio::get_std_states()
 {
-    size_t jj(0);
     std::shared_ptr<LStates> vec(new LStates(this->getN()));
+    auto jj = vec->begin();
 
     for (auto & ii: *this)
     {
-        for (size_t kk = 0; kk < ii->size(); kk++)
+        for (auto & kk: *ii)
         {
-            vec->at(jj) = (*ii)[kk].l_states() / (this->T_EADxLGD * (*ii)[kk].n);
+            *jj = kk.l_states() / (this->T_EADxLGD * kk.n);
             jj++;
         }
     }
@@ -470,14 +473,15 @@ std::shared_ptr<LStates> Credit_portfolio::get_std_states()
 
 arma::vec Credit_portfolio::get_EADxLGDs()
 {
-    size_t jj(0);
     arma::vec vec(this->getN());
+    auto jj = vec.begin();
+
 
     for (auto & ii: *this)
     {
-        for (size_t kk = 0; kk < ii->size(); kk++)
+        for (auto & kk: *ii)
         {
-            vec[jj] = (*ii)[kk]._le / (*ii)[kk].n;
+            *jj = kk._le / kk.n;
             jj++;
         }
     }
@@ -488,10 +492,12 @@ arma::vec Credit_portfolio::get_EADxLGDs()
 std::vector<double> Credit_portfolio::get_portfolios_EADs()
 {
     std::vector<double> vec(this->size());
+    auto jj = vec.begin();
 
-    for (size_t ii = 0; ii < this->size(); ii++)
+    for (auto &ii: *this)
     {
-        vec[ii] = (*this)[ii]->getT_EAD();
+        *jj = ii->getT_EAD();
+        jj++;
     }
 
     return vec;
@@ -638,14 +644,14 @@ void Credit_portfolio::pmIdio(arma::mat *l, size_t n, size_t id, size_t p)
 
 arma::vec Credit_portfolio::v_idio(size_t id)
 {
-    size_t jj(0);
     arma::vec l(this->getN());
+    auto jj = l.begin();
 
     for (auto & ii: *this)
     {
-        for (size_t kk = 0; kk < ii->size(); kk++)
+        for (auto & kk: *ii)
         {
-            l[jj] = CreditRisk::Utils::randn_s((*ii)[kk].equ.idio_seed + id);
+            *jj = CreditRisk::Utils::randn_s(kk.equ.idio_seed + id);
             jj++;
         }
     }
@@ -1585,7 +1591,6 @@ void Credit_portfolio::pd_c_fill(std::vector<Scenario> * pd_c_mig, size_t * ii, 
         mu_p.unlock();
         if (jj < pd_c_mig->size())
         {
-            pd_c_mig->at(jj) =
             pd_c_mig->at(jj) = this->pd_c(points->points(jj));
         }
     }

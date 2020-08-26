@@ -251,11 +251,11 @@ namespace saddle
         return pp;
     }
 
-    arma::vec p_states_c(double t, arma::vec & p_states, double npd, double beta, double idio, double cwi)
+    arma::vec p_states_c(double t, arma::vec & p_states, double pd, double beta, double idio, double cwi)
     {
         arma::vec pp(p_states.size() + 2);
 
-        double pb = p_c(t, npd, beta, idio, cwi);
+        double pb = p_c(t, pd, beta, idio, cwi);
         pp.back() = pb;
         double pa = pb;
 

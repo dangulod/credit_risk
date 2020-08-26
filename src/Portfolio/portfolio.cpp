@@ -132,10 +132,12 @@ double Portfolio::loss(double t, arma::vec cwi, arma::vec v_t)
 arma::vec Portfolio::get_cwi(arma::vec f, unsigned long idio_id)
 {
     arma::vec cwi(this->size());
+    auto jj = cwi.begin();
 
-    for (size_t ii = 0; ii < this->size(); ii++)
+    for (auto & ii: *this)
     {
-        cwi[ii] = (*this)[ii].equ.CWI(f, idio_id);
+        (*jj) = ii.equ.CWI(f, idio_id);
+        jj++;
     }
 
     return cwi;

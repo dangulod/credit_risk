@@ -49,7 +49,7 @@ namespace CreditRisk
     namespace saddle {
         double p_c(double p, double beta, double idio, double cwi);
         double p_c(double t, double p, double beta, double idio, double cwi);
-        arma::vec p_states_c(double t, arma::vec & p_states, double npd, double beta, double idio, double cwi);
+        arma::vec p_states_c(double t, arma::vec & p_states, double pd, double beta, double idio, double cwi);
         arma::vec p_states_c(arma::vec & p_states, double npd, double beta, double idio, double cwi);
 
         double num(double s, arma::vec & l_states, arma::vec & p_states);

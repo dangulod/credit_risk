@@ -13,17 +13,40 @@ int main()
     TP::ThreadPool pool(8);
     pool.init();
 
-    /*
-    CreditRisk::Credit_portfolio p0 = CreditRisk::Credit_portfolio::from_csv("/opt/share/data/test/Portfolio.csv",
-                                                                             "",
-                                                                             "/opt/share/data/test/counter.csv",
-                                                                             "/opt/share/data/test/cor.csv",
-                                                                             2,
-                                                                             "/opt/share/data/test/transition.csv",
-                                                                             "/opt/share/data/test/spread.csv");
+    pt::ptree pt;
+    boost::property_tree::read_json("/opt/share/data/titus/titus.json", pt);
+    CreditRisk::Credit_portfolio cp = CreditRisk::Credit_portfolio::from_ptree(pt);
+
+    arma::mat loss = cp.loss_ru_without_secur(1000, 987654321, &pool);
 
     CreditRisk::Integrator::PointsAndWeigths points = CreditRisk::Integrator::gki();
 
+    arma::vec ns = cp.get_Ns();
+    auto eadxlgd = cp.get_std_states();
+    auto pd_c = cp.pd_c(points, &pool);
+
+    double quantile = cp.quantile(0.9995, &ns, eadxlgd.get(), pd_c.get(), &points, &pool);
+
+    arma::vec c_contrib(cp.getN(), arma::fill::zeros);
+    arma::vec con(points.points.size());
+    //cp.contrib(quantile, &ns, eadxlgd.get(), pd_c.get(), &con, &c_contrib, &points, 0, 1);
+
+    arma::vec contrib = cp.getContrib(quantile, &ns, eadxlgd.get(), pd_c.get(), &points, &pool) * cp.T_EADxLGD;
+
+    contrib.print();
+
+    /*
+    CreditRisk::Credit_portfolio p0 = CreditRisk::Credit_portfolio::from_csv("/tmp/EC_DATA/portfolio.csv",
+                                                                             "/tmp/EC_DATA/funds.csv",
+                                                                             "/tmp/EC_DATA/counter.csv",
+                                                                             "/tmp/EC_DATA/cor.csv",
+                                                                             29,
+                                                                             "/tmp/EC_DATA/transition.csv",
+                                                                             "/tmp/EC_DATA/spreads.csv");
+
+    CreditRisk::Integrator::PointsAndWeigths points = CreditRisk::Integrator::gki();
+
+    pt::write_json("/tmp/EC_DATA/portfolio.json", p0.to_ptree());
     auto pd_c = p0.pd_c(points, &pool);
     arma::vec ns = p0.get_Ns();
     auto eadxlgd = p0.get_std_states();
@@ -52,7 +75,6 @@ int main()
     loss.save(file_in2, arma::csv_ascii);
 
     file_in2.close();
-    */
 
     std::string file = "/opt/share/data/optim/optim.json";
     pt::ptree pt;
@@ -111,6 +133,7 @@ int main()
     dy = std::chrono::high_resolution_clock::now();
     dif = dy - dx;
     std::cout << "Margin: " << dif.count() << " seconds" << std::endl;
+    */
 
     /*
     CreditRisk::Transition tr = CreditRisk::Transition::from_csv("/home/dangulo/Downloads/transition.csv");
@@ -191,50 +214,53 @@ int main()
     */
     // ========================= SECURITIZATIONS ===========================================
     /*
-    std::string file = "/opt/share/data/titus/titus.json";
+    std::string file = "/tmp/EC_DATA/portfolio.json";
     // std::string file = "/opt/share/data/ES.json";
     pt::ptree pt;
     pt::read_json(file, pt);
 
     CreditRisk::Credit_portfolio p0 = CreditRisk::Credit_portfolio::from_ptree(pt);
-
     printf("==== COMPUTING LOSS ====\n");
     size_t n = 1e5;
     unsigned long seed = 987654321;
     double quantile = 0.9995;
 
-    arma::vec total2 = p0.loss_without_secur(n, seed);
-    arma::mat loss2 = p0.loss_portfolio_without_secur(n, seed);
+
+    //arma::vec total2 = p0.loss_without_secur(n, seed, &pool);
+    arma::mat loss2 = p0.loss_ru_without_secur(n, seed, &pool);
 
     ofstream file_in2("/tmp/losses_sin.csv");
 
-    for (auto &ii : p0)
+    for (auto &ii : p0.rus)
     {
-        file_in2 << ii->name << ",";
+        file_in2 << ii << ",";
     }
     file_in2 << endl;
     loss2.save(file_in2, arma::csv_ascii);
 
     file_in2.close();
 
-    double capital2 = CreditRisk::Utils::quantile(total2, quantile);
+    //double capital2 = CreditRisk::Utils::quantile(total2, quantile);
+
 
     printf("economic capital: %.20f\n", capital2);
     printf("economic capital std: %.20f\n", capital2 / p0.T_EADxLGD);
 
-    ofstream file_in("/tmp/losses_con.csv");
-    arma::vec total = p0.loss(n, seed);
-    arma::mat loss = p0.loss_portfolio(n, seed);
 
-    for (auto &ii : p0)
+    ofstream file_in("/tmp/losses_con.csv");
+    //arma::vec total = p0.loss(n, seed, &pool);
+    arma::mat loss = p0.loss_ru(n, seed, &pool);
+
+    for (auto &ii : p0.rus)
     {
-        file_in << ii->name << ",";
+        file_in << ii << ",";
     }
     file_in << endl;
     loss.save(file_in, arma::csv_ascii);
 
     file_in.close();
-
+    */
+    /*
     double capital = CreditRisk::Utils::quantile(total, quantile);
 
     printf("economic capital: %.20f\n", capital);

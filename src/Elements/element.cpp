@@ -166,7 +166,7 @@ double Element::pd_c(double cwi)
 double Element::pd_c(double t, double cwi)
 {
     if (t == 1) return CreditRisk::saddle::p_c(this->_npd, this->beta, this->idio, cwi);
-    return CreditRisk::saddle::p_c(t, this->_npd, this->beta, this->idio, cwi);
+    return CreditRisk::saddle::p_c(t, this->pd_b, this->beta, this->idio, cwi);
 }
 
 void Element::setMigration(Transition *tr, Spread *sp, double rf)
@@ -175,6 +175,9 @@ void Element::setMigration(Transition *tr, Spread *sp, double rf)
     {
         this->_states = Mig(CreditRisk::Utils::qnorm(tr->states_prob(this->pd_b)),
                             sp->get_spreads(this->t, tr->state(this->pd_b), rf, this->lgd_addon) * this->ead);
+    } else
+    {
+        this->_states = Mig();
     }
 }
 
@@ -186,7 +189,7 @@ arma::vec Element::p_states_c(double t, double cwi)
                                                       this->beta, this->idio, cwi);
     }
 
-    return CreditRisk::saddle::p_states_c(t, this->_states.p_states, this->_npd,
+    return CreditRisk::saddle::p_states_c(t, this->_states.p_states, this->pd_b,
                                           this->beta, this->idio, cwi);
 }
 
