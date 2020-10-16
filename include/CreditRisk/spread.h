@@ -27,6 +27,8 @@ public:
     void to_csv(std::string file);
     static Spread from_csv(std::string file);
 
+    static Spread from_ect(std::string file);
+
     double at(size_t ii, size_t jj);
 
     size_t n_states();
@@ -36,6 +38,8 @@ public:
     size_t state(std::string state);
 
     arma::vec get_spreads(double term, std::string state,  double rf, double max = 1);
+
+    arma::mat getMatrix();
 
 private:
     std::vector<std::string> m_states;

@@ -10,9 +10,30 @@ using namespace std;
 
 int main()
 {
+    CreditRisk::Credit_portfolio p = CreditRisk::Credit_portfolio::from_ect(
+                "/opt/share/data/datosprueba/EC_DATA/DATA/IN/DATA_CRED_WHOL.txt",
+                "/opt/share/data/datosprueba/EC_DATA/DATA/IN/DATA_CRED_RETAIL.txt",
+                "/opt/share/data/datosprueba/EC_DATA/DATA/IN/CORREL.txt",
+                "/opt/share/data/datosprueba/EC_DATA/DATA/IN/FUND_FILE.csv",
+                "/opt/share/data/datosprueba/EC_DATA/DATA/IN/PTRANS.txt",
+                "/opt/share/data/datosprueba/EC_DATA/DATA/IN/SPREADS.txt"
+                );
+
+    CreditRisk::CorMatrix z = CreditRisk::CorMatrix::from_ect("/opt/share/data/datosprueba/EC_DATA/DATA/IN/CORREL.txt");
+
+    z.cor.print();
+
+    CreditRisk::Transition x = CreditRisk::Transition::from_ect("/opt/share/data/datosprueba/EC_DATA/DATA/IN/PTRANS.txt");
+
+    x.getMatrix().print();
+
+    CreditRisk::Spread y = CreditRisk::Spread::from_ect("/opt/share/data/datosprueba/EC_DATA/DATA/IN/SPREADS.txt");
+
+    y.getMatrix().print();
+
     TP::ThreadPool pool(8);
     pool.init();
-
+    /*
     pt::ptree pt;
     boost::property_tree::read_json("/opt/share/data/titus/titus.json", pt);
     CreditRisk::Credit_portfolio cp = CreditRisk::Credit_portfolio::from_ptree(pt);
@@ -34,22 +55,35 @@ int main()
     arma::vec contrib = cp.getContrib(quantile, &ns, eadxlgd.get(), pd_c.get(), &points, &pool) * cp.T_EADxLGD;
 
     contrib.print();
-
-    /*
-    CreditRisk::Credit_portfolio p0 = CreditRisk::Credit_portfolio::from_csv("/tmp/EC_DATA/portfolio.csv",
-                                                                             "/tmp/EC_DATA/funds.csv",
-                                                                             "/tmp/EC_DATA/counter.csv",
-                                                                             "/tmp/EC_DATA/cor.csv",
-                                                                             29,
+    CreditRisk::Credit_portfolio p0 = CreditRisk::Credit_portfolio::from_csv("/tmp/EC_DATA/portfolio_mig.csv",
+                                                                             "",
+                                                                             "/tmp/EC_DATA/counter_mig.csv",
+                                                                             "/tmp/EC_DATA/cor2.csv",
+                                                                             2,
                                                                              "/tmp/EC_DATA/transition.csv",
                                                                              "/tmp/EC_DATA/spreads.csv");
 
+    arma::vec loss = p0.loss(1e6, 987654321, &pool);
+    double l = CreditRisk::Utils::quantile(loss, 0.9995);
+
+    std::cout << "Loss: " << l << std::endl;
+
     CreditRisk::Integrator::PointsAndWeigths points = CreditRisk::Integrator::gki();
 
-    pt::write_json("/tmp/EC_DATA/portfolio.json", p0.to_ptree());
     auto pd_c = p0.pd_c(points, &pool);
     arma::vec ns = p0.get_Ns();
     auto eadxlgd = p0.get_std_states();
+
+    arma::vec contrib_mig = p0.getContrib(l / p0.T_EADxLGD, &ns, eadxlgd.get(), pd_c.get(), &points, &pool) * p0.T_EADxLGD;
+
+    for (auto & ii: contrib_mig)
+    {
+        printf("%.20f\n", ii);
+    }
+    */
+
+    /*
+    pt::write_json("/tmp/EC_DATA/portfolio.json", p0.to_ptree());
 
     printf("%.20f\n", p0.quantile(0.9995, &ns, eadxlgd.get(), pd_c.get(), &points, &pool));
 

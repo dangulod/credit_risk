@@ -153,6 +153,51 @@ CorMatrix CorMatrix::from_csv(string file, size_t n_factors)
     }
 }
 
+CorMatrix CorMatrix::from_ect(string file)
+{
+    std::ifstream input(file);
+
+    if (input.is_open())
+    {
+        std::string buffer;
+        std::vector<std::string> splitted;
+
+        std::getline(input, buffer);
+        boost::algorithm::split(splitted, buffer, [](char c) { return c == '\t'; });
+
+        size_t nf = splitted.size();
+
+        arma::mat cor(nf, nf);
+
+        for (size_t jj = 0; jj < nf; jj++)
+        {
+            cor.at(0, jj) = atof(splitted.at(jj).c_str());
+        }
+
+        size_t ii = 1;
+
+        while (std::getline(input, buffer))
+        {
+            boost::algorithm::split(splitted, buffer, [](char c) { return c == '\t'; });
+
+            if (splitted.size() == nf)
+            {
+                for (size_t jj = 0; jj < nf; jj++)
+                {
+                    cor.at(ii, jj) = atof(splitted.at(jj).c_str());
+                }
+                ii++;
+            }
+        }
+        return CorMatrix(cor);
+
+
+    } else
+    {
+        throw std::invalid_argument("File can not be opened");
+    }
+}
+
 void CorMatrix::check_equation(CreditRisk::Equation & value)
 {
     double R2 = arma::as_scalar(value.weights.t() * this->cor * value.weights);

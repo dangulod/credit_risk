@@ -91,7 +91,7 @@ arma::vec pnorm(const arma::vec & x)
 
 double randn_s()
 {
-    std::mt19937_64 generator;;
+    std::mt19937_64 generator;
 
     double numerator = generator();
     double divisor = generator.max();

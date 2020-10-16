@@ -7,6 +7,8 @@
 struct FundParam
 {
     double purchase, at, de;
+    FundParam(double purchase, double at, double de):
+        purchase(purchase), at(at), de(de) {}
 };
 
 namespace CreditRisk

@@ -4,6 +4,7 @@
 #include <memory>
 #include <thread>
 #include <mutex>
+#include <algorithm>
 #include "../ThreadPool/threadPool.hpp"
 #include <nlopt.hpp>
 #include "portfolio.h"
@@ -108,6 +109,9 @@ namespace CreditRisk
 
         static Credit_portfolio from_csv(string Portfolios, string Funds, string Elements, string CorMatrix, size_t n_factors,
                                          string transition = "", string spread = "");
+
+        static Credit_portfolio from_ect(string wholesale, string retail, string CorMatrix,
+                                         string Funds = "", string transition = "", string spread = "");
 
         size_t getN();
         void setT_EADxLGD();

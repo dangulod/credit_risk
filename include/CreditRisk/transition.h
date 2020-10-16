@@ -27,6 +27,8 @@ public:
     void to_csv(std::string file);
     static Transition from_csv(std::string file);
 
+    static Transition from_ect(std::string file);
+
     double at(size_t ii, size_t jj);
 
     size_t n_states();
@@ -34,6 +36,8 @@ public:
     arma::vec states_prob(double pd);
     std::string state(double pd);
     size_t n_state(double pd);
+
+    arma::mat getMatrix();
 
 private:
     std::vector<std::string> m_states;

@@ -142,6 +142,54 @@ void Spread::to_csv(std::string file)
     }
 }
 
+Spread Spread::from_ect(std::string file)
+{
+    std::ifstream input(file);
+
+    if (input.is_open())
+    {
+        size_t ss = CreditRisk::Utils::number_of_lines(file);
+
+        std::string buffer;
+
+        std::vector<std::string> splitted;
+
+        std::getline(input, buffer);
+        boost::algorithm::split(splitted, buffer, [](char c) { return c == '\t'; });
+
+        size_t ll = splitted.size();
+
+        std::vector<unsigned int> terms(ll - 1);
+
+        for (size_t ii = 0; ii < (ll - 1); ii++)
+        {
+            terms.at(ii) = atoi(splitted.at(ii + 1).c_str());
+        }
+
+        std::vector<std::string> states {"AAA", "AA", "A", "BBB", "BB", "B", "CCC"};
+        arma::mat matrix(ss - 1, ll - 1);
+
+        size_t ii = 0;
+        while (std::getline(input, buffer))
+        {
+            boost::algorithm::split(splitted, buffer, [](char c) { return c == '\t'; });
+
+            if (splitted.size() == ll)
+            {
+                for (size_t jj = 0; jj < (ll - 1); jj++)
+                {
+                    matrix.at(ii, jj) = atof(splitted.at(jj + 1).c_str());
+                }
+                ii++;
+            }
+        }
+        return Spread(states, terms, matrix);
+    } else
+    {
+        throw std::invalid_argument("File can not be opened");
+    }
+}
+
 Spread Spread::from_csv(std::string file)
 {
     std::ifstream input(file);
@@ -237,6 +285,11 @@ double Spread::spread(std::string state, double term)
     double t2 = this->m_terms.at(column);
 
     return (st2 * (term - t1) + st1 *(t2 - term)) / (t2 - t1);
+}
+
+arma::mat Spread::getMatrix()
+{
+    return this->m_matrix;
 }
 
 arma::vec Spread::get_spreads(double term, std::string state,  double rf, double max)

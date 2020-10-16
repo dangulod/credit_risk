@@ -300,6 +300,7 @@ double Element::loss(double t, arma::vec cwi, arma::vec v_t, size_t id_t)
         return (v_t[id_t] < t) * _le;
         break;
     }
+    return 0;
 }
 
 double Element::getT(double cwi)

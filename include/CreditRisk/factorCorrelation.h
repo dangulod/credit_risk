@@ -36,6 +36,8 @@ namespace CreditRisk
         void to_csv(string file);
         static CorMatrix from_csv(string file, size_t n_factors);
 
+        static CorMatrix from_ect(string file);
+
         void check_equation(CreditRisk::Equation & value);
     };
 }

@@ -171,6 +171,11 @@ void Transition::to_csv(std::string file)
     }
 }
 
+arma::mat Transition::getMatrix()
+{
+    return this->m_matrix;
+}
+
 Transition Transition::from_csv(std::string file)
 {
     std::ifstream input(file);
@@ -204,6 +209,41 @@ Transition Transition::from_csv(std::string file)
             }
         }
         return Transition(states, matrix);
+    } else
+    {
+        throw std::invalid_argument("File can not be opened");
+    }
+}
+
+Transition Transition::from_ect(std::string file)
+{
+    std::ifstream input(file);
+
+    if (input.is_open())
+    {
+        std::vector<std::string> states {"AAA", "AA", "A", "BBB", "BB", "B", "CCC", "Default"};
+
+        arma::mat matrix(8, 8);
+
+        std::string buffer;
+        std::vector<std::string> splitted;
+
+        size_t ii = 0;
+        while (std::getline(input, buffer))
+        {
+            boost::algorithm::split(splitted, buffer, [](char c) { return c == '\t'; });
+
+            if (splitted.size() == 8)
+            {
+                for (size_t jj = 0; jj < 8; jj++)
+                {
+                    matrix.at(ii, jj) = atof(splitted.at(jj).c_str());
+                }
+                ii++;
+            }
+        }
+        return Transition(states, matrix);
+
     } else
     {
         throw std::invalid_argument("File can not be opened");

@@ -197,6 +197,187 @@ Credit_portfolio Credit_portfolio::from_ptree(pt::ptree & value)
     return p;
 }
 
+Credit_portfolio Credit_portfolio::from_ect(string wholesale, string retail, string CorMatrix,
+                                 string Funds, string transition, string spread)
+{
+    std::shared_ptr<Transition> tr;
+    std::shared_ptr<Spread> sp;
+    if ((transition != "") && (spread != ""))
+    {
+        tr.reset(new Transition(Transition::from_ect(transition)));
+        sp.reset(new Spread(Spread::from_ect(spread)));
+    }
+
+    Credit_portfolio p = ((transition == "") && (spread == "")) ?
+                Credit_portfolio(CreditRisk::CorMatrix::from_ect(CorMatrix).cor):
+                Credit_portfolio(CreditRisk::CorMatrix::from_ect(CorMatrix).cor,
+                                 *tr.get(),
+                                 *sp.get());
+
+    std::vector<std::shared_ptr<CreditRisk::Portfolio>> portfolios;
+
+    portfolios.push_back(std::make_shared<Portfolio>(Portfolio("0")));
+
+    std::ifstream input;
+
+    if (Funds != "")
+    {
+
+        input.open(Funds);
+        string header, buffer;
+        std::vector<std::string> splitted;
+
+        if (input.is_open())
+        {
+            std::getline(input, header);
+
+            while (std::getline(input, buffer))
+            {
+                boost::algorithm::split(splitted, buffer, [](char c) { return c == ';'; });
+
+                if (splitted.size() == 4)
+                {
+                    std::vector<std::shared_ptr<CreditRisk::Portfolio>>::iterator pos = std::find_if(portfolios.begin(),
+                                                                                                     portfolios.end(),
+                                                                                                     [&](const auto& val){ return val->name == splitted.at(0); });
+                    if (pos != portfolios.end())
+                    {
+                        dynamic_cast<Fund*>(pos->get())->fundParam.push_back(FundParam(atof(splitted.at(3).c_str()),
+                                                                                       atof(splitted.at(1).c_str()),
+                                                                                       atof(splitted.at(2).c_str())));
+                    } else
+                    {
+                        portfolios.push_back(std::make_shared<Fund>(Fund(splitted.at(0),
+                                                                         atof(splitted.at(3).c_str()),
+                                                                         atof(splitted.at(1).c_str()),
+                                                                         atof(splitted.at(2).c_str()))));
+                    }
+
+                }
+            }
+            input.close();
+        }
+    }
+
+    input.open(wholesale);
+
+    if (input.is_open())
+    {
+        string header, buffer;
+        std::vector<std::string> splitted;
+        std::getline(input, header);
+
+        while (std::getline(input, buffer))
+        {
+            boost::algorithm::split(splitted, buffer, [](char c) { return c == '\t'; });
+
+            if (splitted.size() > 1)
+            {
+                arma::vec wei(p.n_factors());
+
+                for (size_t jj = 0; jj < 17; jj++)
+                {
+                    wei.at(jj) = atof(splitted.at(10 + jj).c_str());
+                }
+
+                for (size_t jj = 17; jj < wei.size(); jj++)
+                {
+                    wei.at(jj) = 0;
+                }
+
+                CreditRisk::Equation eq(atoi(splitted.at(0).c_str()), wei);
+
+                double pd = atof(splitted.at(7).c_str());
+                double lgd = atof(splitted.at(5).c_str());
+                double k = atof(splitted.at(9).c_str());
+                double lgd_addon = lgd * (1 + ((lgd * (1 - lgd)) /(k * pow(lgd, 2) * (1 - pd))));
+                lgd_addon = std::fmax(std::fmin(lgd_addon, 1), 0);
+
+                CreditRisk::Element ele(atoi(splitted.at(2).c_str()), // ru
+                                        atoi(splitted.at(3).c_str()), // n
+                                        atof(splitted.at(4).c_str()), // ead
+                                        (atof(splitted.at(8).c_str()) < 1) ? pow(1 + atof(splitted.at(7).c_str()), atof(splitted.at(8).c_str())) - 1 :
+                                                                             atof(splitted.at(7).c_str()), // bonificada
+                                        atof(splitted.at(7).c_str()), // pd
+                                        atof(splitted.at(5).c_str()), // lgd
+                                        lgd_addon,
+                                        atof(splitted.at(10).c_str()), // beta
+                                        atof(splitted.at(8).c_str()), // term
+                                        CreditRisk::Element::Element::Treatment::Wholesale,
+                                        std::move(eq));
+
+                for (auto & ii: portfolios)
+                {
+                    if (ii->name == splitted.at(1)) *ii.get() + ele;
+                }
+            }
+        }
+        input.close();
+    } else
+    {
+        throw std::invalid_argument("Wholesale file can not be opened");
+    }
+
+    input.open(retail);
+
+    if (input.is_open())
+    {
+        string header, buffer;
+        std::vector<std::string> splitted;
+        std::getline(input, header);
+
+        while (std::getline(input, buffer))
+        {
+            boost::algorithm::split(splitted, buffer, [](char c) { return c == '\t'; });
+
+            if (splitted.size() > 1)
+            {
+                arma::vec wei(p.n_factors(), arma::fill::zeros);
+
+                for (size_t jj = 0; jj < wei.size(); jj++)
+                {
+                    wei.at(jj) = atof(splitted.at(jj + 11).c_str());
+                }
+
+                CreditRisk::Equation eq(atoi(splitted.at(0).c_str()), wei);
+
+                CreditRisk::Element ele(atoi(splitted.at(2).c_str()), // ru
+                            atoi(splitted.at(4).c_str()), // n
+                            atof(splitted.at(5).c_str()), // ead
+                            atof(splitted.at(8).c_str()), // Bonificada
+                            atof(splitted.at(8).c_str()), // pd
+                            atof(splitted.at(6).c_str()), // lgd
+                            std::fmax(std::fmin(atof(splitted.at(6).c_str()) * atof(splitted.at(10).c_str()), 1), 0), // lgd_addon
+                            atof(splitted.at(9).c_str()), // beta
+                            1, // term
+                            CreditRisk::Element::Element::Treatment::Retail,
+                            std::move(eq));
+
+                for (auto & ii: portfolios)
+                {
+                    if (ii->name == splitted.at(1)) *ii.get() + ele;
+                }
+            }
+        }
+        input.close();
+    } else
+    {
+        throw std::invalid_argument("Retail file can not be opened");
+    }
+
+    for (auto & ii: portfolios)
+    {
+        if (dynamic_cast<CreditRisk::Fund*>(ii.get()) != nullptr)
+        {
+            p + *dynamic_cast<CreditRisk::Fund*>(ii.get());
+        } else {
+            p + *ii;
+        }
+    }
+
+    return p;
+}
+
 Credit_portfolio Credit_portfolio::from_csv(string Portfolios, string Funds, string Elements, string CorMatrix, size_t n_factors,
                                             string transition, string spread)
 {
