@@ -10,6 +10,20 @@ using namespace std;
 
 int main()
 {
+    CreditRisk::Credit_portfolio p = CreditRisk::Credit_portfolio::from_xlsx_ps("/home/dangulo/Downloads/SCIB_CM_12_2020_v1.xlsx",
+                                                                                "/home/dangulo/Downloads/transition.csv",
+                                                                                "/home/dangulo/Downloads/spreads.csv");
+
+
+    /*
+    CreditRisk::Credit_portfolio p = CreditRisk::Credit_portfolio::from_csv(
+                "/home/dangulo/Downloads/titus/Portfolio.csv", "/home/dangulo/Downloads/titus/Fund.csv",
+                "/home/dangulo/Downloads/titus/counter.csv", "/home/dangulo/Downloads/titus/cor.csv", 17);
+    */
+
+
+    /*
+
     CreditRisk::Credit_portfolio p = CreditRisk::Credit_portfolio::from_ect(
                 "/opt/share/data/datosprueba/EC_DATA/DATA/IN/DATA_CRED_WHOL.txt",
                 "/opt/share/data/datosprueba/EC_DATA/DATA/IN/DATA_CRED_RETAIL.txt",
@@ -30,9 +44,37 @@ int main()
     CreditRisk::Spread y = CreditRisk::Spread::from_ect("/opt/share/data/datosprueba/EC_DATA/DATA/IN/SPREADS.txt");
 
     y.getMatrix().print();
-
+    */
     TP::ThreadPool pool(8);
     pool.init();
+
+    arma::mat loss = p.loss_ru(1e5, 123456789, &pool, false);
+
+    ofstream file_in2("/tmp/losses_con.csv");
+
+    for (auto &ii : p.rus)
+    {
+        file_in2 << ii << ",";
+    }
+    file_in2 << endl;
+    loss.save(file_in2, arma::csv_ascii);
+
+    file_in2.close();
+
+    arma::mat loss_with = p.loss_ru_without_secur(1e5, 123456789, &pool, false);
+
+    ofstream file2("/tmp/losses_sin.csv");
+
+    for (auto &ii : p.rus)
+    {
+        file2 << ii << ",";
+    }
+    file2 << endl;
+    loss.save(file2, arma::csv_ascii);
+
+    file2.close();
+
+
     /*
     pt::ptree pt;
     boost::property_tree::read_json("/opt/share/data/titus/titus.json", pt);

@@ -17,6 +17,8 @@ file(GLOB MODEL_SOURCES
     src/Migration/*.cpp
     )
 
+link_directories("/usr/local/lib")
+
 include_directories(
     "include/CreditRisk"
     "include"
@@ -26,7 +28,7 @@ add_library(CreditRisk ${MODEL_SOURCES})
 
 add_executable(${PROJECT_NAME} main.cpp)
 
-set(LIBS pthread armadillo openblas nlopt)
+set(LIBS pthread armadillo openblas nlopt OpenXLSX)
 
 target_link_libraries(CreditRisk ${LIBS})
 

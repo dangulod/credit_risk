@@ -548,6 +548,134 @@ Credit_portfolio Credit_portfolio::from_csv(string Portfolios, string Funds, str
     return p;
 }
 
+Credit_portfolio Credit_portfolio::from_xlsx_ps(string file, string transition, string spread)
+{
+    std::shared_ptr<Transition> tr;
+    std::shared_ptr<Spread> sp;
+    if ((transition != "") && (spread != ""))
+    {
+        tr.reset(new Transition(Transition::from_csv(transition)));
+        sp.reset(new Spread(Spread::from_csv(spread)));
+    }
+
+    Credit_portfolio p = ((transition == "") && (spread == "")) ?
+                Credit_portfolio({{1, 0}, {0, 1}}):
+                Credit_portfolio({{1, 0}, {0, 1}},
+                                 *tr.get(),
+                                 *sp.get());
+
+
+    OpenXLSX::XLDocument doc(file);
+    auto wkb = doc.workbook();
+    auto sheets = wkb.sheetNames();
+
+    std::regex reg("Informe_Reparto");
+
+    auto ii = sheets.begin();
+
+    while (ii != sheets.end())
+    {
+        if (std::regex_search(ii->c_str(), reg))
+        {
+            break;
+        }
+        ii++;
+    }
+
+    if (ii == sheets.end()) throw std::invalid_argument("No sheets called Informe_Reparto has been found");
+
+    auto sheet = wkb.worksheet(*ii);
+
+    auto instrument = sheet.range(OpenXLSX::XLCellReference(6, 23), OpenXLSX::XLCellReference(5e5, 23));
+
+    std::vector<std::shared_ptr<CreditRisk::Portfolio>> portfolios;
+
+    int counterparties = 0;
+
+    for (auto & jj: instrument)
+    {
+        if (jj.valueType() != OpenXLSX::XLValueType::Empty)
+        {
+            auto kk = portfolios.begin();
+
+            while (kk != portfolios.end())
+            {
+                if (jj.value().get<std::string>() == (*kk)->name) break;
+                kk++;
+            }
+
+            if (kk == portfolios.end()) portfolios.push_back(std::make_shared<Portfolio>(Portfolio(jj.value().get<std::string>())));
+            counterparties++;
+        }
+    }
+
+    instrument = sheet.range(OpenXLSX::XLCellReference(6, 23), OpenXLSX::XLCellReference(counterparties + 5, 23));
+
+    auto counter   = instrument.begin();
+    auto idio_id   = sheet.range(OpenXLSX::XLCellReference(6, 2), OpenXLSX::XLCellReference(counterparties + 5, 2)).begin();
+    auto position  = sheet.range(OpenXLSX::XLCellReference(6, 3), OpenXLSX::XLCellReference(counterparties + 5, 3)).begin();
+    auto ru        = sheet.range(OpenXLSX::XLCellReference(6, 4), OpenXLSX::XLCellReference(counterparties + 5, 4)).begin();
+    auto ead       = sheet.range(OpenXLSX::XLCellReference(6, 6), OpenXLSX::XLCellReference(counterparties + 5, 6)).begin();
+    auto lgd       = sheet.range(OpenXLSX::XLCellReference(6, 7), OpenXLSX::XLCellReference(counterparties + 5, 7)).begin();
+    auto lgd_addon = sheet.range(OpenXLSX::XLCellReference(6, 8), OpenXLSX::XLCellReference(counterparties + 5, 8)).begin();
+    auto pd_sb     = sheet.range(OpenXLSX::XLCellReference(6, 10), OpenXLSX::XLCellReference(counterparties + 5, 10)).begin();
+    auto pd        = sheet.range(OpenXLSX::XLCellReference(6, 11), OpenXLSX::XLCellReference(counterparties + 5, 11)).begin();
+    auto rho       = sheet.range(OpenXLSX::XLCellReference(6, 12), OpenXLSX::XLCellReference(counterparties + 5, 12)).begin();
+    auto plazo     = sheet.range(OpenXLSX::XLCellReference(6, 18), OpenXLSX::XLCellReference(counterparties + 5, 18)).begin();
+    auto beta1     = sheet.range(OpenXLSX::XLCellReference(6, 19), OpenXLSX::XLCellReference(counterparties + 5, 19)).begin();
+    auto beta2     = sheet.range(OpenXLSX::XLCellReference(6, 20), OpenXLSX::XLCellReference(counterparties + 5, 20)).begin();
+    auto tramo     = sheet.range(OpenXLSX::XLCellReference(6, 21), OpenXLSX::XLCellReference(counterparties + 5, 21)).begin();
+
+    while (counter != instrument.end())
+    {
+        CreditRisk::Equation eq(idio_id->value().get<int>(),
+                                {(beta1->valueType() == OpenXLSX::XLValueType::Integer) ? static_cast<double>(beta1->value().get<int>()) : beta1->value().get<double>(),
+                                 (beta2->valueType() == OpenXLSX::XLValueType::Integer) ? static_cast<double>(beta2->value().get<int>()) : beta1->value().get<double>()});
+
+        CreditRisk::Element ele(ru->value().get<unsigned long>(),
+                                position->value().get<unsigned long>(),
+                                (ead->valueType() == OpenXLSX::XLValueType::Integer) ? static_cast<double>(ead->value().get<int>()) : ead->value().get<double>(),
+                                (pd->valueType() == OpenXLSX::XLValueType::Integer) ? static_cast<double>(pd->value().get<int>()) : pd->value().get<double>(),
+                                (pd_sb->valueType() == OpenXLSX::XLValueType::Integer) ? static_cast<double>(pd_sb->value().get<int>()) : pd_sb->value().get<double>(),
+                                (lgd->valueType() == OpenXLSX::XLValueType::Integer) ? static_cast<double>(lgd->value().get<int>()) : lgd->value().get<double>(),
+                                (lgd_addon->valueType() == OpenXLSX::XLValueType::Integer) ? static_cast<double>(lgd_addon->value().get<int>()) : lgd_addon->value().get<double>(),
+                                (rho->valueType() == OpenXLSX::XLValueType::Integer) ? static_cast<double>(rho->value().get<int>()) : rho->value().get<double>(),
+                                (plazo->valueType() != OpenXLSX::XLValueType::Empty) ? (plazo->valueType() == OpenXLSX::XLValueType::Integer) ? static_cast<double>(plazo->value().get<int>()) : plazo->value().get<double>() : 1,
+                                (tramo->valueType() != OpenXLSX::XLValueType::Empty) ? CreditRisk::Element::Element::Treatment::Retail : CreditRisk::Element::Element::Treatment::Wholesale,
+                                std::move(eq));
+
+
+        for (auto & kk: portfolios)
+        {
+            if (kk->name == counter->value().get<std::string>()) *kk.get() + ele;
+        }
+
+        idio_id++;
+        position++;
+        ru++;
+        ead++;
+        lgd++;
+        lgd_addon++;
+        pd_sb++;
+        pd++;
+        rho++;
+        plazo++;
+        beta1++;
+        beta2++;
+        counter++;
+        tramo++;
+    }
+
+    for (auto & ii: portfolios)
+    {
+        p + *ii;
+    }
+
+    doc.close();
+
+    return p;
+}
+
 void Credit_portfolio::setT_EADxLGD()
 {
     this->T_EADxLGD = 0;
