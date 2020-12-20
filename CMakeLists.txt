@@ -17,19 +17,42 @@ file(GLOB MODEL_SOURCES
     src/Migration/*.cpp
     )
 
-link_directories("/usr/local/lib")
+IF (WIN32)
+    link_directories("/lib")
+ELSE()
+    link_directories("/usr/local/lib")
+ENDIF()
 
-include_directories(
-    "include/CreditRisk"
-    "include"
-    )
+IF (WIN32)
+    include_directories("include/CreditRisk"
+        "include"
+        "/armadillo/include"
+        "/boost"
+        "/nlopt"
+        "/OpenXLSX")
+ELSE()
+    include_directories(
+        "include/CreditRisk"
+        "include")
+ENDIF()
 
-add_library(CreditRisk ${MODEL_SOURCES})
+add_library(CreditRisk STATIC ${MODEL_SOURCES})
 
 add_executable(${PROJECT_NAME} main.cpp)
 
-set(LIBS pthread armadillo openblas nlopt OpenXLSX)
+IF (WIN32)
+    set(LIBS pthread openblas nlopt OpenXLSX-static)
+ELSE()
+    set(LIBS pthread armadillo openblas nlopt OpenXLSX)
+ENDIF()
 
 target_link_libraries(CreditRisk ${LIBS})
 
+IF (WIN32)
+    target_compile_definitions(CreditRisk PRIVATE OPENXLSX_STATIC_DEFINE)
+ENDIF()
+
 target_link_libraries(${PROJECT_NAME} CreditRisk)
+
+
+
