@@ -10,10 +10,7 @@ using namespace std;
 
 int main()
 {
-    CreditRisk::Credit_portfolio p = CreditRisk::Credit_portfolio::from_xlsx_ps("/home/dangulo/Downloads/SCIB_CM_12_2020_v1.xlsx",
-                                                                                "/home/dangulo/Downloads/transition.csv",
-                                                                                "/home/dangulo/Downloads/spreads.csv");
-
+    CreditRisk::Credit_portfolio p = CreditRisk::Credit_portfolio::from_xlsx_ps("/tmp/SCIB_CM_12_2020_v1.xlsx");
 
     /*
     CreditRisk::Credit_portfolio p = CreditRisk::Credit_portfolio::from_csv(

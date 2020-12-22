@@ -634,7 +634,7 @@ Credit_portfolio Credit_portfolio::from_xlsx_ps(string file, string transition, 
 
         CreditRisk::Element ele(ru->value().get<unsigned long>(),
                                 position->value().get<unsigned long>(),
-                                (ead->valueType() == OpenXLSX::XLValueType::Integer) ? static_cast<double>(ead->value().get<int>()) : ead->value().get<double>(),
+                                ((ead->valueType() == OpenXLSX::XLValueType::Integer) ? static_cast<double>(ead->value().get<int>()) : ead->value().get<double>()) / static_cast<double>(position->value().get<unsigned long>()),
                                 (pd->valueType() == OpenXLSX::XLValueType::Integer) ? static_cast<double>(pd->value().get<int>()) : pd->value().get<double>(),
                                 (pd_sb->valueType() == OpenXLSX::XLValueType::Integer) ? static_cast<double>(pd_sb->value().get<int>()) : pd_sb->value().get<double>(),
                                 (lgd->valueType() == OpenXLSX::XLValueType::Integer) ? static_cast<double>(lgd->value().get<int>()) : lgd->value().get<double>(),
