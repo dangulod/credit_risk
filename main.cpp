@@ -10,7 +10,24 @@ using namespace std;
 
 int main()
 {
-    CreditRisk::Credit_portfolio p = CreditRisk::Credit_portfolio::from_xlsx_ps("/tmp/SCIB_CM_12_2020_v1.xlsx");
+    TP::ThreadPool pool(8);
+    pool.init();
+
+    CreditRisk::Credit_portfolio p = CreditRisk::Credit_portfolio::from_xlsx_ps("/home/dangulo/Downloads/SCIB_CM_12_2020_v1.xlsx",
+                                                                                "/home/dangulo/Downloads/transition.csv",
+                                                                                "/home/dangulo/Downloads/spreads.csv");
+
+    p.at(1)->at(0).l_states(true).t().print();
+    p.at(1)->at(0).p_states_c(0, true).t().print();
+
+    p.at(1)->at(0).l_states(true).t().print();
+    p.at(1)->at(0).p_states_c(-2, true).t().print();
+
+    p.at(2)->at(7).l_states(true).t().print();
+    p.at(2)->at(7).p_states_c(0, true).t().print();
+
+    p.at(2)->at(7).l_states(true).t().print();
+    p.at(2)->at(7).p_states_c(-2, true).t().print();
 
     /*
     CreditRisk::Credit_portfolio p = CreditRisk::Credit_portfolio::from_csv(
@@ -41,9 +58,6 @@ int main()
     CreditRisk::Spread y = CreditRisk::Spread::from_ect("/opt/share/data/datosprueba/EC_DATA/DATA/IN/SPREADS.txt");
 
     y.getMatrix().print();
-    */
-    TP::ThreadPool pool(8);
-    pool.init();
 
     arma::mat loss = p.loss_ru(1e5, 123456789, &pool, false);
 
@@ -70,7 +84,7 @@ int main()
     loss.save(file2, arma::csv_ascii);
 
     file2.close();
-
+    */
 
     /*
     pt::ptree pt;

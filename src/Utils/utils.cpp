@@ -94,7 +94,7 @@ double randn_s()
     std::mt19937_64 generator;
 
     double numerator = generator();
-    double divisor = generator.max();
+    double divisor = static_cast<double>(generator.max());
     double p = numerator / divisor;
 
     return qnorm(p);
@@ -107,7 +107,7 @@ double randn_s(unsigned long seed)
     generator.seed(seed);
 
     double numerator = generator();
-    double divisor = generator.max();
+    double divisor = static_cast<double>(generator.max());
     double p = numerator / divisor;
 
     return qnorm(p);
@@ -124,7 +124,7 @@ arma::vec randn_v(size_t n, unsigned long seed)
     for (size_t ii = 0; ii < n; ii++)
     {
         numerator = generator();
-        divisor = generator.max();
+        divisor = static_cast<double>(generator.max());
         p = numerator / divisor;
 
         ale.at(ii) = qnorm(p);
@@ -232,11 +232,14 @@ namespace saddle
         return CreditRisk::saddle::p_c(CreditRisk::Utils::qnorm(1 - pow(1 - p, t)), beta, idio, cwi);
     }
 
-    arma::vec p_states_c(arma::vec & p_states, double npd, double beta, double idio, double cwi)
+    arma::vec p_states_c(arma::vec & p_states, double npd, double beta, double idio, double cwi, bool migration)
     {
+        double pb = p_c(npd, beta, idio, cwi);
+
+        if (!migration) return {1 - pb, pb};
+
         arma::vec pp(p_states.size() + 2);
 
-        double pb = p_c(npd, beta, idio, cwi);
         pp.back() = pb;
         double pa = pb;
 
@@ -251,11 +254,14 @@ namespace saddle
         return pp;
     }
 
-    arma::vec p_states_c(double t, arma::vec & p_states, double pd, double beta, double idio, double cwi)
+    arma::vec p_states_c(double t, arma::vec & p_states, double pd, double beta, double idio, double cwi, bool migration)
     {
+        double pb = p_c(t, pd, beta, idio, cwi);
+
+        if (!migration) return {1 - pb, pb};
+
         arma::vec pp(p_states.size() + 2);
 
-        double pb = p_c(t, pd, beta, idio, cwi);
         pp.back() = pb;
         double pa = pb;
 

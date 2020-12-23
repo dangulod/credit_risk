@@ -181,26 +181,28 @@ void Element::setMigration(Transition *tr, Spread *sp, double rf)
     }
 }
 
-arma::vec Element::p_states_c(double t, double cwi)
+arma::vec Element::p_states_c(double t, double cwi, bool migration)
 {
     if (t == 1)
     {
         return CreditRisk::saddle::p_states_c(this->_states.p_states, this->_npd,
-                                                      this->beta, this->idio, cwi);
+                                                      this->beta, this->idio, cwi, migration);
     }
 
     return CreditRisk::saddle::p_states_c(t, this->_states.p_states, this->pd_b,
-                                          this->beta, this->idio, cwi);
+                                          this->beta, this->idio, cwi, migration);
 }
 
-arma::vec Element::p_states_c(double cwi)
+arma::vec Element::p_states_c(double cwi, bool migration)
 {
     return CreditRisk::saddle::p_states_c(this->_states.p_states, this->_npd,
-                                          this->beta, this->idio, cwi);
+                                          this->beta, this->idio, cwi, migration);
 }
 
-arma::vec Element::l_states()
+arma::vec Element::l_states(bool migration)
 {
+    if (!migration) return {0, this->_le};
+
     arma::vec pp(this->_states.l_states.size() + 2);
 
     pp.back() = this->_le;

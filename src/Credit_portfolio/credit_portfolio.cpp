@@ -763,7 +763,7 @@ arma::vec Credit_portfolio::get_std_EADxLGDs()
     return vec;
 }
 
-std::shared_ptr<LStates> Credit_portfolio::get_std_states()
+std::shared_ptr<LStates> Credit_portfolio::get_std_states(bool migration)
 {
     std::shared_ptr<LStates> vec(new LStates(this->getN()));
     auto jj = vec->begin();
@@ -772,7 +772,7 @@ std::shared_ptr<LStates> Credit_portfolio::get_std_states()
     {
         for (auto & kk: *ii)
         {
-            *jj = kk.l_states() / (this->T_EADxLGD * kk.n);
+            *jj = kk.l_states(migration) / (this->T_EADxLGD * kk.n);
             jj++;
         }
     }
@@ -1852,7 +1852,7 @@ arma::vec Credit_portfolio::loss_without_secur(unsigned long n, unsigned long se
     return l;
 }
 
-Scenario Credit_portfolio::pd_c(arma::vec t, double scenario)
+Scenario Credit_portfolio::pd_c(arma::vec t, double scenario, bool migration)
 {
     Scenario vec(this->getN());
     size_t jj = 0;
@@ -1862,7 +1862,7 @@ Scenario Credit_portfolio::pd_c(arma::vec t, double scenario)
     {
         for (size_t kk = 0; kk < ii->size(); kk++)
         {
-            vec[jj] = (*ii)[kk].p_states_c(t[hh], scenario);
+            vec[jj] = (*ii)[kk].p_states_c(t[hh], scenario, migration);
             jj++;
         };
         hh++;
@@ -1872,7 +1872,7 @@ Scenario Credit_portfolio::pd_c(arma::vec t, double scenario)
 }
 
 
-Scenario Credit_portfolio::pd_c(double scenario)
+Scenario Credit_portfolio::pd_c(double scenario, bool migration)
 {
     Scenario vec(this->getN());
     size_t jj = 0;
@@ -1881,7 +1881,7 @@ Scenario Credit_portfolio::pd_c(double scenario)
     {
         for (size_t kk = 0; kk < ii->size(); kk++)
         {
-            vec.at(jj) = (*ii)[kk].p_states_c(scenario);
+            vec.at(jj) = (*ii)[kk].p_states_c(scenario, migration);
             jj++;
         }
     }
@@ -1889,7 +1889,7 @@ Scenario Credit_portfolio::pd_c(double scenario)
     return vec;
 }
 
-void Credit_portfolio::pd_c_fill(std::vector<Scenario> * pd_c_mig, size_t * ii, CreditRisk::Integrator::PointsAndWeigths * points)
+void Credit_portfolio::pd_c_fill(std::vector<Scenario> * pd_c_mig, size_t * ii, CreditRisk::Integrator::PointsAndWeigths * points, bool migration)
 {
     size_t jj;
     while (*ii < pd_c_mig->size())
@@ -1900,12 +1900,12 @@ void Credit_portfolio::pd_c_fill(std::vector<Scenario> * pd_c_mig, size_t * ii, 
         mu_p.unlock();
         if (jj < pd_c_mig->size())
         {
-            pd_c_mig->at(jj) = this->pd_c(points->points(jj));
+            pd_c_mig->at(jj) = this->pd_c(points->points(jj), migration);
         }
     }
 }
 
-std::shared_ptr<std::vector<Scenario>> Credit_portfolio::pd_c(CreditRisk::Integrator::PointsAndWeigths points, TP::ThreadPool * pool)
+std::shared_ptr<std::vector<Scenario>> Credit_portfolio::pd_c(CreditRisk::Integrator::PointsAndWeigths points, TP::ThreadPool * pool, bool migration)
 {
     std::shared_ptr<std::vector<Scenario>> pd_c_mig(new std::vector<Scenario>(points.points.size()));
 
@@ -1916,7 +1916,7 @@ std::shared_ptr<std::vector<Scenario>> Credit_portfolio::pd_c(CreditRisk::Integr
 
     for (size_t ii = 0; ii < pool->size(); ii++)
     {
-        futures.at(ii) = pool->post(&Credit_portfolio::pd_c_fill, this, pd_c_mig.get(), &jj, &points);
+        futures.at(ii) = pool->post(&Credit_portfolio::pd_c_fill, this, pd_c_mig.get(), &jj, &points, migration);
     }
 
     for (auto & ii: futures)

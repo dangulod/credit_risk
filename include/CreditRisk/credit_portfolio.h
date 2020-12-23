@@ -73,7 +73,7 @@ namespace CreditRisk
 
         // Saddle Point
 
-        void pd_c_fill(std::vector<Scenario> * pd_c_mig, size_t * ii, CreditRisk::Integrator::PointsAndWeigths * points);
+        void pd_c_fill(std::vector<Scenario> * pd_c_mig, size_t * ii, CreditRisk::Integrator::PointsAndWeigths * points, bool migration = true);
 
         void saddle_point(double loss, arma::vec * n, LStates *eadxlgd, std::vector<Scenario> * pd_c,
                              CreditRisk::Integrator::PointsAndWeigths * points, arma::vec * saddle_points, size_t id, size_t p);
@@ -136,7 +136,7 @@ namespace CreditRisk
         // Get vectors
 
         arma::vec get_std_EADxLGDs();
-        std::shared_ptr<LStates> get_std_states();
+        std::shared_ptr<LStates> get_std_states(bool migration = true);
         arma::vec get_EADxLGDs();
         arma::vec get_Ns();
         std::vector<double> get_portfolios_EADs();
@@ -187,10 +187,10 @@ namespace CreditRisk
 
         // Conditional probabiliy
 
-        Scenario pd_c(arma::vec t, double scenarios);
-        Scenario pd_c(double scenario);
+        Scenario pd_c(arma::vec t, double scenarios, bool migration = true);
+        Scenario pd_c(double scenario, bool migration = true);
 
-        std::shared_ptr<std::vector<Scenario>> pd_c(CreditRisk::Integrator::PointsAndWeigths points, TP::ThreadPool * pool);
+        std::shared_ptr<std::vector<Scenario>> pd_c(CreditRisk::Integrator::PointsAndWeigths points, TP::ThreadPool * pool, bool migration = true);
 
         // Saddle Point
         // with vectors
