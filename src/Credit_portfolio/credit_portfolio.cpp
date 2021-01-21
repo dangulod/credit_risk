@@ -15,70 +15,76 @@ Credit_portfolio::Credit_portfolio(arma::mat cor, Transition &transition, Spread
 
 void Credit_portfolio::operator+(CreditRisk::Portfolio & value)
 {
-    for (auto & ii: *this)
+    if (value.size() > 0)
     {
-        if (ii->name == value.name) std::invalid_argument("Name of portfolio duplicated");
-    }
+        for (auto & ii: *this)
+        {
+            if (ii->name == value.name) std::invalid_argument("Name of portfolio duplicated");
+        }
 
-    for (auto & ii: value) this->cf.check_equation(ii.equ);
-    this->n += value.size();
+        for (auto & ii: value) this->cf.check_equation(ii.equ);
+        this->n += value.size();
 
-    for (auto & ii: value)
-    {
-        size_t pos = CreditRisk::Utils::get_position(this->rus, ii.ru);
-
-        if (pos == this->rus.size())
-            this->rus.push_back(ii.ru);
-
-        this->rus_pos.push_back(pos);
-    }
-
-    if ((this->m_spread != nullptr) && (this->m_transition != nullptr))
-    {
         for (auto & ii: value)
         {
-            ii.setMigration(this->m_transition.get(), this->m_spread.get(), value.rf);
+            size_t pos = CreditRisk::Utils::get_position(this->rus, ii.ru);
+
+            if (pos == this->rus.size())
+                this->rus.push_back(ii.ru);
+
+            this->rus_pos.push_back(pos);
         }
+
+        if ((this->m_spread != nullptr) && (this->m_transition != nullptr))
+        {
+            for (auto & ii: value)
+            {
+                ii.setMigration(this->m_transition.get(), this->m_spread.get(), value.rf);
+            }
+        }
+
+        this->T_EAD += value.getT_EAD();
+        this->T_EADxLGD += value.getT_EADxLGD();
+
+        this->push_back(std::make_unique<CreditRisk::Portfolio>(std::move(value)));
     }
-
-    this->T_EAD += value.getT_EAD();
-    this->T_EADxLGD += value.getT_EADxLGD();
-
-    this->push_back(std::make_unique<CreditRisk::Portfolio>(std::move(value)));
 }
 
 void Credit_portfolio::operator+(CreditRisk::Portfolio && value)
 {
-    for (auto & ii: *this)
+    if (value.size() > 0)
     {
-        if (ii->name == value.name) std::invalid_argument("Name of portfolio duplicated");
-    }
+        for (auto & ii: *this)
+        {
+            if (ii->name == value.name) std::invalid_argument("Name of portfolio duplicated");
+        }
 
-    for (auto & ii: value) this->cf.check_equation(ii.equ);
-    this->n += value.size();
+        for (auto & ii: value) this->cf.check_equation(ii.equ);
+        this->n += value.size();
 
-    for (auto & ii: value)
-    {
-        size_t pos = CreditRisk::Utils::get_position(this->rus, ii.ru);
-
-        if (pos == this->rus.size())
-            this->rus.push_back(ii.ru);
-
-        this->rus_pos.push_back(pos);
-    }
-
-    if ((this->m_spread != nullptr) && (this->m_transition != nullptr))
-    {
         for (auto & ii: value)
         {
-            ii.setMigration(this->m_transition.get(), this->m_spread.get(), value.rf);
+            size_t pos = CreditRisk::Utils::get_position(this->rus, ii.ru);
+
+            if (pos == this->rus.size())
+                this->rus.push_back(ii.ru);
+
+            this->rus_pos.push_back(pos);
         }
+
+        if ((this->m_spread != nullptr) && (this->m_transition != nullptr))
+        {
+            for (auto & ii: value)
+            {
+                ii.setMigration(this->m_transition.get(), this->m_spread.get(), value.rf);
+            }
+        }
+
+        this->T_EAD += value.getT_EAD();
+        this->T_EADxLGD += value.getT_EADxLGD();
+
+        this->push_back(std::make_unique<CreditRisk::Portfolio>(std::move(value)));
     }
-
-    this->T_EAD += value.getT_EAD();
-    this->T_EADxLGD += value.getT_EADxLGD();
-
-    this->push_back(std::make_unique<CreditRisk::Portfolio>(std::move(value)));    
 }
 
 void Credit_portfolio::operator+(CreditRisk::Fund & value)
