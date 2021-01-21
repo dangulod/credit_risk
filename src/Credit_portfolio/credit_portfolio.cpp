@@ -89,54 +89,60 @@ void Credit_portfolio::operator+(CreditRisk::Portfolio && value)
 
 void Credit_portfolio::operator+(CreditRisk::Fund & value)
 {
-    for (auto & ii: *this)
+    if (value.size() > 0)
     {
-        if (ii->name == value.name) std::invalid_argument("Name of portfolio duplicated");
+        for (auto & ii: *this)
+        {
+            if (ii->name == value.name) std::invalid_argument("Name of portfolio duplicated");
+        }
+
+        for (auto & ii: value) this->cf.check_equation(ii.equ);
+        this->n += value.size();
+
+        for (auto & ii: value)
+        {
+            size_t pos = CreditRisk::Utils::get_position(this->rus, ii.ru);
+
+            if (pos == this->rus.size())
+                this->rus.push_back(ii.ru);
+
+            this->rus_pos.push_back(pos);
+        }
+
+        this->T_EAD += value.getT_EAD();
+        this->T_EADxLGD += value.getT_EADxLGD();
+
+        this->push_back(std::make_unique<CreditRisk::Fund>(std::move(value)));
     }
-
-    for (auto & ii: value) this->cf.check_equation(ii.equ);
-    this->n += value.size();
-
-    for (auto & ii: value)
-    {
-        size_t pos = CreditRisk::Utils::get_position(this->rus, ii.ru);
-
-        if (pos == this->rus.size())
-            this->rus.push_back(ii.ru);
-
-        this->rus_pos.push_back(pos);
-    }
-
-    this->T_EAD += value.getT_EAD();
-    this->T_EADxLGD += value.getT_EADxLGD();
-
-    this->push_back(std::make_unique<CreditRisk::Fund>(std::move(value)));
 }
 
 void Credit_portfolio::operator+(CreditRisk::Fund && value)
 {
-    for (auto & ii: *this)
+    if (value.size() > 0)
     {
-        if (ii->name == value.name) std::invalid_argument("Name of portfolio duplicated");
+        for (auto & ii: *this)
+        {
+            if (ii->name == value.name) std::invalid_argument("Name of portfolio duplicated");
+        }
+
+        for (auto & ii: value) this->cf.check_equation(ii.equ);
+        this->n += value.size();
+
+        for (auto & ii: value)
+        {
+            size_t pos = CreditRisk::Utils::get_position(this->rus, ii.ru);
+
+            if (pos == this->rus.size())
+                this->rus.push_back(ii.ru);
+
+            this->rus_pos.push_back(pos);
+        }
+
+        this->T_EAD += value.getT_EAD();
+        this->T_EADxLGD += value.getT_EADxLGD();
+
+        this->push_back(std::make_unique<CreditRisk::Fund>(std::move(value)));
     }
-
-    for (auto & ii: value) this->cf.check_equation(ii.equ);
-    this->n += value.size();
-
-    for (auto & ii: value)
-    {
-        size_t pos = CreditRisk::Utils::get_position(this->rus, ii.ru);
-
-        if (pos == this->rus.size())
-            this->rus.push_back(ii.ru);
-
-        this->rus_pos.push_back(pos);
-    }
-
-    this->T_EAD += value.getT_EAD();
-    this->T_EADxLGD += value.getT_EADxLGD();
-
-    this->push_back(std::make_unique<CreditRisk::Fund>(std::move(value)));
 }
 
 pt::ptree Credit_portfolio::to_ptree()
@@ -241,22 +247,22 @@ Credit_portfolio Credit_portfolio::from_ect(string wholesale, string retail, str
             {
                 boost::algorithm::split(splitted, buffer, [](char c) { return c == ';'; });
 
-                if (splitted.size() == 4)
+                if (splitted.size() == 5)
                 {
                     std::vector<std::shared_ptr<CreditRisk::Portfolio>>::iterator pos = std::find_if(portfolios.begin(),
                                                                                                      portfolios.end(),
                                                                                                      [&](const auto& val){ return val->name == splitted.at(0); });
                     if (pos != portfolios.end())
                     {
-                        dynamic_cast<Fund*>(pos->get())->fundParam.push_back(FundParam(atof(splitted.at(3).c_str()),
-                                                                                       atof(splitted.at(1).c_str()),
-                                                                                       atof(splitted.at(2).c_str())));
+                        dynamic_cast<Fund*>(pos->get())->fundParam.push_back(FundParam(atof(splitted.at(4).c_str()),
+                                                                                       std::fmax(0, atof(splitted.at(4).c_str()) - atof(splitted.at(1).c_str())),
+                                                                                       std::fmax(0, atof(splitted.at(2).c_str()) - atof(splitted.at(1).c_str()))));
                     } else
                     {
                         portfolios.push_back(std::make_shared<Fund>(Fund(splitted.at(0),
-                                                                         atof(splitted.at(3).c_str()),
-                                                                         atof(splitted.at(1).c_str()),
-                                                                         atof(splitted.at(2).c_str()))));
+                                                                         std::fmax(0, atof(splitted.at(4).c_str()) - atof(splitted.at(1).c_str())),
+                                                                         std::fmax(0, atof(splitted.at(2).c_str()) - atof(splitted.at(1).c_str())),
+                                                                         atof(splitted.at(3).c_str()))));
                     }
 
                 }
