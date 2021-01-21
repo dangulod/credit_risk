@@ -94,7 +94,7 @@ Fund Fund::from_ptree(pt::ptree & value)
 
 double Fund::loss_sec(arma::vec f, unsigned long idio_id)
 {
-    double loss_wf = this->loss(f, idio_id);
+    double loss_wf = this->loss(f, idio_id, false);
     double loss    = 0;
 
     for (auto & ii: this->fundParam)
@@ -173,24 +173,24 @@ arma::vec Fund::get_T_de(arma::vec cwi, arma::vec v_t, double tol)
     return de;
 }
 
-double Fund::fit_t_sad(double t, double s, arma::vec n, arma::vec eadxlgd, arma::vec & pd_c, double k1s, double scenario, size_t id)
+double Fund::fit_t_sad(double t, double s, arma::vec * n, LStates * eadxlgd, Scenario * pd_c, double k1s, double scenario, size_t id)
 {
     double k1 = 0;
 
     for (size_t ii = 0; ii < this->size(); ii++)
     {
-        pd_c.at(ii + id) = this->at(ii).pd_c(t, scenario);
+        pd_c->at(ii + id) = this->at(ii).p_states_c(t, scenario);
     }
 
     for (size_t ii = id; ii < this->size() + id; ii++)
     {
-        k1 += saddle::K1(s, n.at(ii), eadxlgd.at(ii), pd_c.at(ii));
+        k1 += saddle::K1(s, n->at(ii), eadxlgd->at(ii), pd_c->at(ii));
     }
 
     return pow(k1 - k1s, 2);
 }
 
-double Fund::get_T_saddle(double s, arma::vec n, arma::vec eadxlgd, arma::vec & pd_c, double k1s, double scenario, size_t id)
+double Fund::get_T_saddle(double s, arma::vec * n, LStates * eadxlgd, Scenario * pd_c, double k1s, double scenario, size_t id)
 {
     return Optim::root_Brent(&Fund::fit_t_sad, (*this), 1e-9, 1, 1e-9, s, n, eadxlgd, pd_c, k1s, scenario, id);
 }

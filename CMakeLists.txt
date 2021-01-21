@@ -5,8 +5,6 @@ project(Credit_Risk LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-include_directories("CreditRisk/")
-
 file(GLOB MODEL_SOURCES
     src/Elements/*.cpp
     src/Utils/*.cpp
@@ -16,17 +14,45 @@ file(GLOB MODEL_SOURCES
     src/Fund/*.cpp
     src/Credit_portfolio/*.cpp
     src/Integrator/*.cpp
-    src/Portfolio_optim/*.cpp
+    src/Migration/*.cpp
     )
 
-include_directories("include/CreditRisk")
+IF (WIN32)
+    link_directories("/lib")
+ELSE()
+    link_directories("/usr/local/lib")
+ENDIF()
 
-add_library(CreditRisk ${MODEL_SOURCES})
+IF (WIN32)
+    include_directories("include/CreditRisk"
+        "include"
+        "/armadillo/include"
+        "/boost"
+        "/nlopt"
+        "/OpenXLSX")
+ELSE()
+    include_directories(
+        "include/CreditRisk"
+        "include")
+ENDIF()
+
+add_library(CreditRisk STATIC ${MODEL_SOURCES})
 
 add_executable(${PROJECT_NAME} main.cpp)
 
-set(LIBS pthread armadillo openblas nlopt)
+IF (WIN32)
+    set(LIBS pthread openblas nlopt OpenXLSX-static)
+ELSE()
+    set(LIBS pthread armadillo openblas nlopt OpenXLSX)
+ENDIF()
 
 target_link_libraries(CreditRisk ${LIBS})
 
+IF (WIN32)
+    target_compile_definitions(CreditRisk PRIVATE OPENXLSX_STATIC_DEFINE)
+ENDIF()
+
 target_link_libraries(${PROJECT_NAME} CreditRisk)
+
+
+
