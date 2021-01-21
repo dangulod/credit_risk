@@ -307,7 +307,7 @@ Credit_portfolio Credit_portfolio::from_ect(string wholesale, string retail, str
 
                 CreditRisk::Element ele(atoi(splitted.at(2).c_str()), // ru
                                         atoi(splitted.at(3).c_str()), // n
-                                        atof(splitted.at(4).c_str()) / static_cast<double>(atoi(splitted.at(3).c_str())), // ead
+                                        atof(splitted.at(4).c_str()), // ead
                                         (atof(splitted.at(8).c_str()) < 1) ? pow(1 + atof(splitted.at(7).c_str()), atof(splitted.at(8).c_str())) - 1 :
                                                                              atof(splitted.at(7).c_str()), // bonificada
                                         atof(splitted.at(7).c_str()), // pd
@@ -353,7 +353,7 @@ Credit_portfolio Credit_portfolio::from_ect(string wholesale, string retail, str
 
                 CreditRisk::Equation eq(atoi(splitted.at(0).c_str()), wei);
 
-                CreditRisk::Element ele(atoi(splitted.at(2).c_str()), // ru
+                CreditRisk::Element ele(atoi(splitted.at(3).c_str()), // ru
                             atoi(splitted.at(4).c_str()), // n
                             atof(splitted.at(5).c_str()), // ead
                             atof(splitted.at(8).c_str()), // Bonificada
