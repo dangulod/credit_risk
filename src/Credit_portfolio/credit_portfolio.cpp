@@ -1166,6 +1166,8 @@ arma::vec Credit_portfolio::marginal(arma::vec f, unsigned long idio_id, bool mi
 
         if (dynamic_cast<CreditRisk::Fund*>(ii.get()) != nullptr)
         {
+            size_t zz = jj;
+
             CreditRisk::Fund * spv = dynamic_cast<CreditRisk::Fund*>(ii.get());
             arma::vec cwi = spv->get_cwi(f, idio_id);
             arma::vec v_t = spv->get_t(cwi);
@@ -1175,6 +1177,7 @@ arma::vec Credit_portfolio::marginal(arma::vec f, unsigned long idio_id, bool mi
 
             for (size_t hh = 0; hh < spv->fundParam.size(); hh++)
             {
+                jj = zz;
                 if (t_at[hh] < 1)
                 {
                     double fita = spv->__fit_T_loss_t(t_at[hh], spv->fundParam[hh].at, cwi, v_t);
@@ -1452,7 +1455,7 @@ double Credit_portfolio::sLoss_ru(size_t row, size_t column, size_t n, unsigned 
                 cc++;
             }
         }
-        
+
         return loss;
     }
 
@@ -1494,6 +1497,8 @@ arma::vec Credit_portfolio::sLoss_ru(arma::vec  f, unsigned long idio_id, bool m
 
         if (dynamic_cast<CreditRisk::Fund*>(ii.get()) != nullptr)
         {
+            size_t zz = jj;
+
             CreditRisk::Fund * spv = dynamic_cast<CreditRisk::Fund*>(ii.get());
             arma::vec cwi = spv->get_cwi(f, idio_id);
             arma::vec v_t = spv->get_t(cwi);
@@ -1503,6 +1508,7 @@ arma::vec Credit_portfolio::sLoss_ru(arma::vec  f, unsigned long idio_id, bool m
 
             for (size_t hh = 0; hh < spv->fundParam.size(); hh++)
             {
+                jj = zz;
                 if (t_at[hh] < 1)
                 {
                     double fita = spv->__fit_T_loss_t(t_at[hh], spv->fundParam[hh].at, cwi, v_t);
