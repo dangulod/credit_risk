@@ -42,6 +42,8 @@ namespace CreditRisk
         pt::ptree to_ptree();
         static Fund from_ptree(pt::ptree & value);
 
+        void arrange();
+
         double loss_sec(arma::vec  f, unsigned long idio_id);
         double loss_sec(double t, arma::vec  f, unsigned long idio_id);
 

@@ -92,6 +92,14 @@ Fund Fund::from_ptree(pt::ptree & value)
     return f;
 }
 
+void Fund::arrange()
+{
+    std::sort(this->fundParam.begin(),
+              this->fundParam.end(),
+              [] (FundParam a, FundParam b) { return a.de < b.de; });
+}
+
+
 double Fund::loss_sec(arma::vec f, unsigned long idio_id)
 {
     double loss_wf = this->loss(f, idio_id, false);
