@@ -112,6 +112,8 @@ void Credit_portfolio::operator+(CreditRisk::Fund & value)
         this->T_EAD += value.getT_EAD();
         this->T_EADxLGD += value.getT_EADxLGD();
 
+        value.arrange();
+
         this->push_back(std::make_unique<CreditRisk::Fund>(std::move(value)));
     }
 }
@@ -140,6 +142,8 @@ void Credit_portfolio::operator+(CreditRisk::Fund && value)
 
         this->T_EAD += value.getT_EAD();
         this->T_EADxLGD += value.getT_EADxLGD();
+
+        value.arrange();
 
         this->push_back(std::make_unique<CreditRisk::Fund>(std::move(value)));
     }
@@ -254,17 +258,22 @@ Credit_portfolio Credit_portfolio::from_ect(string wholesale, string retail, str
                                                                                                      [&](const auto& val){ return val->name == splitted.at(0); });
                     if (pos != portfolios.end())
                     {
-                        dynamic_cast<Fund*>(pos->get())->fundParam.push_back(FundParam(atof(splitted.at(4).c_str()),
-                                                                                       std::fmax(0, atof(splitted.at(4).c_str()) - atof(splitted.at(1).c_str())),
-                                                                                       std::fmax(0, atof(splitted.at(2).c_str()) - atof(splitted.at(1).c_str()))));
+                        if (atof(splitted.at(4).c_str()) > 0)
+                        {
+                            dynamic_cast<Fund*>(pos->get())->fundParam.push_back(FundParam(atof(splitted.at(4).c_str()),
+                                                                                           std::fmax(0, atof(splitted.at(3).c_str()) - atof(splitted.at(1).c_str())),
+                                                                                           std::fmax(0, atof(splitted.at(2).c_str()) - atof(splitted.at(1).c_str()))));
+                        }
                     } else
                     {
-                        portfolios.push_back(std::make_shared<Fund>(Fund(splitted.at(0),
-                                                                         std::fmax(0, atof(splitted.at(4).c_str()) - atof(splitted.at(1).c_str())),
-                                                                         std::fmax(0, atof(splitted.at(2).c_str()) - atof(splitted.at(1).c_str())),
-                                                                         atof(splitted.at(3).c_str()))));
+                        if (atof(splitted.at(4).c_str()) > 0)
+                        {
+                            portfolios.push_back(std::make_shared<Fund>(Fund(splitted.at(0),
+                                                                             atof(splitted.at(4).c_str()),
+                                                                             std::fmax(0, atof(splitted.at(3).c_str()) - atof(splitted.at(1).c_str())),
+                                                                             std::fmax(0, atof(splitted.at(2).c_str()) - atof(splitted.at(1).c_str())))));
+                        }
                     }
-
                 }
             }
             input.close();
@@ -307,7 +316,7 @@ Credit_portfolio Credit_portfolio::from_ect(string wholesale, string retail, str
 
                 CreditRisk::Element ele(atoi(splitted.at(2).c_str()), // ru
                                         atoi(splitted.at(3).c_str()), // n
-                                        atof(splitted.at(4).c_str()), // ead
+                                        atof(splitted.at(4).c_str()) / static_cast<double>(atoi(splitted.at(3).c_str())), // ead
                                         (atof(splitted.at(8).c_str()) < 1) ? pow(1 + atof(splitted.at(7).c_str()), atof(splitted.at(8).c_str())) - 1 :
                                                                              atof(splitted.at(7).c_str()), // bonificada
                                         atof(splitted.at(7).c_str()), // pd
@@ -355,7 +364,7 @@ Credit_portfolio Credit_portfolio::from_ect(string wholesale, string retail, str
 
                 CreditRisk::Element ele(atoi(splitted.at(3).c_str()), // ru
                             atoi(splitted.at(4).c_str()), // n
-                            atof(splitted.at(5).c_str()), // ead
+                            atof(splitted.at(5).c_str()) / static_cast<double>(atoi(splitted.at(4).c_str())), // ead
                             atof(splitted.at(8).c_str()), // Bonificada
                             atof(splitted.at(8).c_str()), // pd
                             atof(splitted.at(6).c_str()), // lgd
