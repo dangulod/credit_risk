@@ -138,7 +138,7 @@ void Spread::to_csv(std::string file)
         output.close();
     } else
     {
-        throw std::invalid_argument("File can not be opened");
+        throw std::invalid_argument("File spread can not be opened");
     }
 }
 
@@ -186,7 +186,7 @@ Spread Spread::from_ect(std::string file)
         return Spread(states, terms, matrix);
     } else
     {
-        throw std::invalid_argument("File can not be opened");
+        throw std::invalid_argument("File spread can not be opened");
     }
 }
 
@@ -235,7 +235,7 @@ Spread Spread::from_csv(std::string file)
         return Spread(states, terms, matrix);
     } else
     {
-        throw std::invalid_argument("File can not be opened");
+        throw std::invalid_argument("File spread can not be opened");
     }
 }
 
