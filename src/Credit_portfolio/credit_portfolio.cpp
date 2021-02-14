@@ -569,6 +569,7 @@ Credit_portfolio Credit_portfolio::from_csv(string Portfolios, string Funds, str
     return p;
 }
 
+#ifdef USE_OPENXLSX
 Credit_portfolio Credit_portfolio::from_xlsx_ps(string file, string transition, string spread)
 {
     std::shared_ptr<Transition> tr;
@@ -696,6 +697,7 @@ Credit_portfolio Credit_portfolio::from_xlsx_ps(string file, string transition, 
 
     return p;
 }
+#endif
 
 void Credit_portfolio::setT_EADxLGD()
 {

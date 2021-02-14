@@ -103,7 +103,7 @@ double randn_s()
 
 double randn_s(unsigned long seed)
 {
-    std::mt19937_64 generator;;
+    std::mt19937_64 generator;
     generator.seed(seed);
 
     double numerator = generator();
@@ -118,7 +118,7 @@ arma::vec randn_v(size_t n, unsigned long seed)
     arma::vec ale(n);
     double numerator, divisor, p;
 
-    std::mt19937_64 generator;;
+    std::mt19937 generator;
     generator.seed(seed);
 
     for (size_t ii = 0; ii < n; ii++)

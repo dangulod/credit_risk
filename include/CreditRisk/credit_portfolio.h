@@ -115,8 +115,9 @@ namespace CreditRisk
         static Credit_portfolio from_ect(string wholesale, string retail, string CorMatrix,
                                          string Funds = "", string transition = "", string spread = "");
 
+#ifdef USE_OPENXLSX
         static Credit_portfolio from_xlsx_ps(string file, string transition = "", string spread = "");
-
+#endif
         size_t getN();
         void setT_EADxLGD();
         void setT_EAD();

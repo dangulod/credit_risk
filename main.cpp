@@ -13,39 +13,97 @@ int main()
     TP::ThreadPool pool(8);
     pool.init();
 
+
+
+
+    CreditRisk::Credit_portfolio p = CreditRisk::Credit_portfolio::from_ect(
+                "test/data/from_ECT/DATA_CRED_WHOL.txt",
+                "test/data/from_ECT/DATA_CRED_RETAIL.txt",
+                "test/data/from_ECT/CORREL.txt",
+                "test/data/from_ECT/SPV_TRANCHES.csv",
+                "test/data/from_ECT/PTRANS.txt",
+                "test/data/from_ECT/SPREADS.txt"
+                );
+
+    pt::write_json("/tmp/portfolio_test.json", p.to_ptree());
+
+    std::cout << p.getN() << std::endl;
+
+    auto dx = std::chrono::high_resolution_clock::now();
+
+    p.loss(1e2, 987654321, &pool);
+
+    auto dy = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> dif = dy - dx;
+    std::cout << dif.count() << " seconds" << std::endl;
+
+    /*
+    pt::ptree pt;
+    pt::read_json("/tmp/titus_example.json", pt);
+
+    CreditRisk::Credit_portfolio p = CreditRisk::Credit_portfolio::from_ptree(pt);
+
+    p.loss_portfolio(10, 987654321, &pool).print();
+    p.margin_loss(10, 987654321, &pool).print();
+    */
+    /*
+    CreditRisk::Credit_portfolio p0 = CreditRisk::Credit_portfolio::from_csv("/tmp/EC_DATA/paralelo/portfolio.csv",
+                                                                             "",
+                                                                             "/tmp/EC_DATA/paralelo/counter2.csv",
+                                                                             "/tmp/EC_DATA/paralelo/cor.csv",
+                                                                             1,
+                                                                             "/tmp/EC_DATA/paralelo/transition.csv",
+                                                                             "/tmp/EC_DATA/paralelo/spread.csv");
+
+    printf("============== ================\n");
+
+    arma::vec seeds{987654321, 123456789, 9876543210, 2468135790, 1357924680, 9182736450, 1928374650, 2581473690, 3692581470,1472583690};
+
+    for (auto &ii : seeds)
+    {
+        arma::vec loss = p0.loss(1e5, ii, &pool, true);
+
+        printf("Quantile %.20f\n", CreditRisk::Utils::quantile(loss, 0.9995));
+    }
+    */
+    /*
     CreditRisk::Credit_portfolio p = CreditRisk::Credit_portfolio::from_xlsx_ps("/home/dangulo/Downloads/SCIB_CM_12_2020_v1.xlsx",
                                                                                 "/home/dangulo/Downloads/transition.csv",
                                                                                 "/home/dangulo/Downloads/spreads.csv");
 
-    p.at(1)->at(0).l_states(true).t().print();
-    p.at(1)->at(0).p_states_c(0, true).t().print();
+    CreditRisk::Integrator::PointsAndWeigths points = CreditRisk::Integrator::gki();
 
-    p.at(1)->at(0).l_states(true).t().print();
-    p.at(1)->at(0).p_states_c(-2, true).t().print();
+    auto ns = p.get_Ns();
+    auto eadxlgd = p.get_std_states(true);
+    auto pd = p.pd_c(points, &pool, true);
 
-    p.at(2)->at(7).l_states(true).t().print();
-    p.at(2)->at(7).p_states_c(0, true).t().print();
+    //arma::vec contrib       = p.getContrib_without_secur(7328909263.214691 / p.T_EADxLGD, &ns, eadxlgd.get(), pd.get(), &points, &pool);
+    arma::vec contrib_secur = p.getContrib(7328909263.214691 / p.T_EADxLGD, &ns, eadxlgd.get(), pd.get(), &points, &pool);
 
-    p.at(2)->at(7).l_states(true).t().print();
-    p.at(2)->at(7).p_states_c(-2, true).t().print();
+    //std::cout << "sum(contrib): " << arma::accu(contrib) << "; " << 7328909263.214691 / p.T_EADxLGD << std::endl;
+    std::cout << "sum(contrib): " << arma::accu(contrib_secur) << "; " << 7328909263.214691 / p.T_EADxLGD << std::endl;
 
-    /*
     CreditRisk::Credit_portfolio p = CreditRisk::Credit_portfolio::from_csv(
                 "/home/dangulo/Downloads/titus/Portfolio.csv", "/home/dangulo/Downloads/titus/Fund.csv",
                 "/home/dangulo/Downloads/titus/counter.csv", "/home/dangulo/Downloads/titus/cor.csv", 17);
-    */
 
 
-    /*
 
     CreditRisk::Credit_portfolio p = CreditRisk::Credit_portfolio::from_ect(
-                "/opt/share/data/datosprueba/EC_DATA/DATA/IN/DATA_CRED_WHOL.txt",
-                "/opt/share/data/datosprueba/EC_DATA/DATA/IN/DATA_CRED_RETAIL.txt",
-                "/opt/share/data/datosprueba/EC_DATA/DATA/IN/CORREL.txt",
-                "/opt/share/data/datosprueba/EC_DATA/DATA/IN/FUND_FILE.csv",
-                "/opt/share/data/datosprueba/EC_DATA/DATA/IN/PTRANS.txt",
-                "/opt/share/data/datosprueba/EC_DATA/DATA/IN/SPREADS.txt"
+                "/home/dangulo/Downloads/IN/COMPLET/DATA_CRED_WHOL.txt",
+                "/home/dangulo/Downloads/IN/COMPLET/DATA_CRED_RETAIL.txt",
+                "/home/dangulo/Downloads/IN/CORREL.txt",
+                "/home/dangulo/Downloads/IN/COMPLET/SPV_TRANCHES_2.csv",
+                "",
+                ""
                 );
+
+    arma::mat loss = p.margin_loss(10, 987654321, &pool, true);
+    loss = p.loss_ru(100, 987654321, &pool, true);
+    loss.print();
+    */
+
+    /*
 
     CreditRisk::CorMatrix z = CreditRisk::CorMatrix::from_ect("/opt/share/data/datosprueba/EC_DATA/DATA/IN/CORREL.txt");
 

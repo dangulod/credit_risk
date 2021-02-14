@@ -167,7 +167,7 @@ void Transition::to_csv(std::string file)
         output.close();
     } else
     {
-        throw std::invalid_argument("File can not be opened");
+        throw std::invalid_argument("File transtition can not be opened");
     }
 }
 
@@ -211,7 +211,7 @@ Transition Transition::from_csv(std::string file)
         return Transition(states, matrix);
     } else
     {
-        throw std::invalid_argument("File can not be opened");
+        throw std::invalid_argument("File transtition can not be opened");
     }
 }
 
@@ -246,7 +246,7 @@ Transition Transition::from_ect(std::string file)
 
     } else
     {
-        throw std::invalid_argument("File can not be opened");
+        throw std::invalid_argument("File transtition can not be opened");
     }
 }
 
