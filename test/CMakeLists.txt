@@ -35,8 +35,8 @@ add_custom_command(TARGET reading_tests POST_BUILD COMMAND ${CMAKE_COMMAND} -E c
 add_custom_command(TARGET reading_tests POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/data/from_csv/transition.csv $<TARGET_FILE_DIR:reading_tests>/data/from_csv/transition.csv)
 
 IF (USE_OPENXLSX)
-add_custom_command(TARGET reading_tests POST_BUILD COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:reading_tests>/data/from_xslx)
-add_custom_command(TARGET reading_tests POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/data/from_xlsx/SCIB_CM_12_2020_v1.xlsx $<TARGET_FILE_DIR:reading_tests>/data/from_xlsx/SCIB_CM_12_2020_v1.xlsx)
-add_custom_command(TARGET reading_tests POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/data/from_xlsx/spreads.csv $<TARGET_FILE_DIR:reading_tests>/data/from_xlsx/spreads.csv)
-add_custom_command(TARGET reading_tests POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/data/from_xlsx/transition.csv $<TARGET_FILE_DIR:reading_tests>/data/from_xlsx/transition.csv)
+    add_custom_command(TARGET reading_tests POST_BUILD COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:reading_tests>/data/from_xslx)
+    add_custom_command(TARGET reading_tests POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/data/from_xlsx/SCIB_CM_12_2020_v1.xlsx $<TARGET_FILE_DIR:reading_tests>/data/from_xlsx/SCIB_CM_12_2020_v1.xlsx)
+    add_custom_command(TARGET reading_tests POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/data/from_xlsx/spreads.csv $<TARGET_FILE_DIR:reading_tests>/data/from_xlsx/spreads.csv)
+    add_custom_command(TARGET reading_tests POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/data/from_xlsx/transition.csv $<TARGET_FILE_DIR:reading_tests>/data/from_xlsx/transition.csv)
 ENDIF()

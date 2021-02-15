@@ -14,7 +14,9 @@
 #include "integrator.h"
 #include "transition.h"
 #include "spread.h"
+#ifdef USE_OPENXLSX
 #include <openxlsx/OpenXLSX.hpp>
+#endif
 #include <regex>
 
 #  define Q_UNUSED(x) (void)x;
