@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 2.8)
 
 project(Credit_Risk CXX)
 
@@ -43,7 +43,7 @@ CR_option(USE_OPENXLSX
     "If ON, this project will be compiled with OPENXLSX support" OFF)
 CR_option(BUILD_CR_TESTS "Set to ON to build Credit Risk tests." ON)
 CR_option(USE_SYSTEM_GTEST
-    "If ON, this project will look in the system paths for an installed gtest library" OFF)
+    "If ON, this project will look in the system paths for an installed gtest library" ON)
 message("=======================================================")
 
 file(GLOB MODEL_SOURCES

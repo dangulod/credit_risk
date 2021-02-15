@@ -13,9 +13,6 @@ int main()
     TP::ThreadPool pool(8);
     pool.init();
 
-
-
-
     CreditRisk::Credit_portfolio p = CreditRisk::Credit_portfolio::from_ect(
                 "test/data/from_ECT/DATA_CRED_WHOL.txt",
                 "test/data/from_ECT/DATA_CRED_RETAIL.txt",
@@ -31,7 +28,7 @@ int main()
 
     auto dx = std::chrono::high_resolution_clock::now();
 
-    p.loss(1e2, 987654321, &pool);
+    p.loss(1e6, 987654321, &pool);
 
     auto dy = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> dif = dy - dx;
