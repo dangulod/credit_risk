@@ -23,7 +23,7 @@
 
 namespace CreditRisk
 {
-    class Credit_portfolio: public std::vector<std::unique_ptr<CreditRisk::Portfolio>>
+    class Credit_portfolio: public std::vector<std::shared_ptr<CreditRisk::Portfolio>>
     {
     private:
         size_t n;
@@ -120,6 +120,9 @@ namespace CreditRisk
 #ifdef USE_OPENXLSX
         static Credit_portfolio from_xlsx_ps(string file, string transition = "", string spread = "");
 #endif
+
+        void arrange();
+
         size_t getN();
         void setT_EADxLGD();
         void setT_EAD();

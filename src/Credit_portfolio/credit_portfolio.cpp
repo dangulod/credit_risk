@@ -699,6 +699,16 @@ Credit_portfolio Credit_portfolio::from_xlsx_ps(string file, string transition, 
 }
 #endif
 
+void Credit_portfolio::arrange()
+{
+    std::sort(this->begin(),
+              this->end(),
+              [] (std::shared_ptr<CreditRisk::Portfolio> a, std::shared_ptr<CreditRisk::Portfolio> b)
+    {
+        return a->getT_EAD() < b->getT_EAD();
+    });
+}
+
 void Credit_portfolio::setT_EADxLGD()
 {
     this->T_EADxLGD = 0;

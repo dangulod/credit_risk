@@ -1,6 +1,8 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.1)
 
-project(Credit_Risk CXX)
+set(default_build_type "Release")
+
+project(Credit_Risk LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -28,11 +30,11 @@ message ("##### Credit Risk version ${CR_VERSION_STRING} #####")
 message("=======================================================")
 message(STATUS "Checking dependencies")
 message("=======================================================")
-find_package(BLAS REQUIRED)
+#find_package(BLAS REQUIRED)
 find_package(NLopt REQUIRED)
 find_package(Armadillo REQUIRED)
 
-message(STATUS "BLAS found at " ${BLAS_LIBRARIES})
+#message(STATUS "BLAS found at " ${BLAS_LIBRARIES})
 message(STATUS "Armadilo found version " ${ARMADILLO_VERSION_STRING})
 message(STATUS "NLopt found version " ${NLOPT_VERSION})
 
