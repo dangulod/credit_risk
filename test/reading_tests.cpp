@@ -1,8 +1,6 @@
 #include <gtest/gtest.h>
 #include <CreditRisk/credit_portfolio.h>
 
-#include <string>
-
 //static CreditRisk::Credit_portfolio p_json = CreditRisk::Credit_portfolio::from_ptree()
 
 TEST(From_ect, PortfolioTest) {

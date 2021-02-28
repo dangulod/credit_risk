@@ -13,6 +13,7 @@ macro(add_CR_test _TEST_NAME)
 endmacro()
 
 add_CR_test(reading)
+add_CR_test(element)
 
 add_custom_command(TARGET reading_tests POST_BUILD COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:reading_tests>/data/from_ECT)
 add_custom_command(TARGET reading_tests POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/data/from_ECT/CORREL.txt $<TARGET_FILE_DIR:reading_tests>/data/from_ECT/CORREL.txt)
