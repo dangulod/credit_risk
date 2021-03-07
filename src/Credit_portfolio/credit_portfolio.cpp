@@ -322,7 +322,7 @@ Credit_portfolio Credit_portfolio::from_ect(string wholesale, string retail, str
                                         atof(splitted.at(7).c_str()), // pd
                                         atof(splitted.at(5).c_str()), // lgd
                                         lgd_addon,
-                                        atof(splitted.at(10).c_str()), // beta
+                                        sqrt(atof(splitted.at(10).c_str())), // beta
                                         atof(splitted.at(8).c_str()), // term
                                         CreditRisk::Element::Element::Treatment::Wholesale,
                                         std::move(eq));
