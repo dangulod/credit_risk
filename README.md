@@ -1,6 +1,16 @@
 # Credit_Risk
 
 ```cpp
+#include <iostream>
+#include <armadillo>
+#include <credit_portfolio.h>
+#include <chrono>
+#include "ThreadPool/threadPool.hpp"
+#include <spread.h>
+#include <transition.h>
+
+int main()
+{
     TP::ThreadPool pool(8);
     pool.init();
 
@@ -71,4 +81,7 @@
     double eva = p.EVA(std_eadxlgds.get(), contrib);
 
     pool.shutdown();
+    
+    return 0;
+}
 ```
