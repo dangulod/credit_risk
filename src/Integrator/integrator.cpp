@@ -1,4 +1,4 @@
-#include "integrator.h"
+#include "CreditRisk/integrator.h"
 
 namespace CreditRisk
 {

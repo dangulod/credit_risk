@@ -1,4 +1,4 @@
-#include "equation.h"
+#include "CreditRisk/equation.h"
 
 namespace CreditRisk
 {

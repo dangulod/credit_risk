@@ -25,6 +25,7 @@ namespace CreditRisk
         arma::mat cor, vs;
 
         CorMatrix() = delete;
+        CorMatrix(int n_factors);
         CorMatrix(arma::mat cor);
         CorMatrix(const CorMatrix & value) = delete;
         CorMatrix(CorMatrix && value) = default;

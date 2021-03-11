@@ -1,4 +1,4 @@
-#include "factorCorrelation.h"
+#include "CreditRisk/factorCorrelation.h"
 
 namespace CreditRisk
 {
@@ -29,6 +29,11 @@ void isCor(arma::mat cor)
             }
         }
     }
+}
+
+CorMatrix::CorMatrix(int n_factors)
+{
+    this->vs = this->cor = arma::eye<arma::mat>(n_factors, n_factors);
 }
 
 CorMatrix::CorMatrix(arma::mat cor)

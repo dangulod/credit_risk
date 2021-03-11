@@ -66,7 +66,6 @@ ENDIF()
 
 IF (WIN32)
     include_directories(
-        "include/CreditRisk"
         "include"
         "/armadillo/include"
         "/boost"

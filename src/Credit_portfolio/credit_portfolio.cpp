@@ -1,11 +1,19 @@
-#include "credit_portfolio.h"
+#include "CreditRisk/credit_portfolio.h"
 
 std::mutex mu_p;
 
 namespace CreditRisk
 {
 
+Credit_portfolio::Credit_portfolio(int n_factors): n(0), T_EAD(0), T_EADxLGD(0), cf(n_factors) {}
+
 Credit_portfolio::Credit_portfolio(arma::mat cor):  n(0), T_EAD(0), T_EADxLGD(0), cf(cor) {}
+
+Credit_portfolio::Credit_portfolio(int n_factors, Transition &transition, Spread &spread) :
+    n(0), m_transition(std::make_shared<Transition>(std::move(transition))),
+    m_spread(std::make_shared<Spread>(std::move(spread))), T_EAD(0),
+    T_EADxLGD(0), cf(n_factors)
+{}
 
 Credit_portfolio::Credit_portfolio(arma::mat cor, Transition &transition, Spread &spread) :
     n(0), m_transition(std::make_shared<Transition>(std::move(transition))),
@@ -1111,6 +1119,26 @@ Spread * Credit_portfolio::get_spread()
     return this->m_spread.get();
 }
 
+arma::mat Credit_portfolio::correlation_structure()
+{
+    arma::mat m(this->getN(), this->n_factors());
+    size_t kk = 0;
+
+    for (auto &ii: *this)
+    {
+        for (auto &jj: *ii)
+        {
+            m.row(kk) = jj.equ.weights.t();
+            kk++;
+        }
+    }
+
+    arma::mat dif = (m * this->cf.cor * m.t());
+
+    dif.diag().ones();
+
+    return m;
+}
 
 double Credit_portfolio::d_Idio(size_t row, size_t column, size_t n)
 {

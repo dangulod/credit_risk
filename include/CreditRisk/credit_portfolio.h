@@ -97,7 +97,9 @@ namespace CreditRisk
         vector<size_t> rus_pos;
 
         Credit_portfolio() = delete;
+        Credit_portfolio(int n_factors);
         Credit_portfolio(arma::mat cor);
+        Credit_portfolio(int n_factors, Transition & transition, Spread & spread);
         Credit_portfolio(arma::mat cor, Transition & transition, Spread & spread);
         Credit_portfolio(const Credit_portfolio & value) = delete;
         Credit_portfolio(Credit_portfolio && value) = default;
@@ -138,6 +140,8 @@ namespace CreditRisk
 
         Transition * get_transition();
         Spread * get_spread();
+
+        arma::mat correlation_structure();
 
         // Get vectors
 

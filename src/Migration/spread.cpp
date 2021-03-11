@@ -1,4 +1,4 @@
-#include "spread.h"
+#include "CreditRisk/spread.h"
 
 namespace CreditRisk
 {
