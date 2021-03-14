@@ -62,4 +62,12 @@ double Equation::systematic(arma::vec f)
 {
     return arma::accu(f % this->weights);
 }
+
+void Equation::setIdio(arma::mat cor)
+{
+    this->R2   = arma::as_scalar(this->weights.t() * cor * this->weights);
+    if (this->R2 > 1) throw std::invalid_argument("Invalid equations weights R2 greater than 1");
+    this->idio = sqrt(1 - R2);
+}
+
 }

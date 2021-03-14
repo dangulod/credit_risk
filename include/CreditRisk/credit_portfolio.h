@@ -103,6 +103,7 @@ namespace CreditRisk
         Credit_portfolio(arma::mat cor, Transition & transition, Spread & spread);
         Credit_portfolio(const Credit_portfolio & value) = delete;
         Credit_portfolio(Credit_portfolio && value) = default;
+        Credit_portfolio & operator=(Credit_portfolio && ) = default;
         ~Credit_portfolio() = default;
 
         void operator+(CreditRisk::Portfolio &  value);

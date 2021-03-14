@@ -30,7 +30,12 @@ void Credit_portfolio::operator+(CreditRisk::Portfolio & value)
             if (ii->name == value.name) std::invalid_argument("Name of portfolio duplicated");
         }
 
-        for (auto & ii: value) this->cf.check_equation(ii.equ);
+        for (auto & ii: value)
+        {
+            this->cf.check_equation(ii.equ);
+            ii.equ.setIdio(this->cf.cor);
+        }
+
         this->n += value.size();
 
         for (auto & ii: value)
@@ -67,7 +72,12 @@ void Credit_portfolio::operator+(CreditRisk::Portfolio && value)
             if (ii->name == value.name) std::invalid_argument("Name of portfolio duplicated");
         }
 
-        for (auto & ii: value) this->cf.check_equation(ii.equ);
+        for (auto & ii: value)
+        {
+            this->cf.check_equation(ii.equ);
+            ii.equ.setIdio(this->cf.cor);
+        }
+
         this->n += value.size();
 
         for (auto & ii: value)
@@ -1137,7 +1147,7 @@ arma::mat Credit_portfolio::correlation_structure()
 
     dif.diag().ones();
 
-    return m;
+    return dif;
 }
 
 double Credit_portfolio::d_Idio(size_t row, size_t column, size_t n)
@@ -2324,6 +2334,8 @@ double Credit_portfolio::fitQuantile(double loss, double prob, arma::vec * n, LS
 double Credit_portfolio::quantile(double prob, arma::vec * n, LStates * eadxlgd, std::vector<Scenario> * pd_c,
                                   CreditRisk::Integrator::PointsAndWeigths * points, TP::ThreadPool * pool, double xtol, double rtol)
 {
+    CreditRisk::Utils::isProbability(prob);
+
     // return root_secant(&Credit_portfolio::fitQuantile_pd, *this, 0.01, 0.99, 1e-9, prob, n, eadxlgd, pd_c, *points, p);
     return CreditRisk::Optim::root_Brentq(&Credit_portfolio::fitQuantile, *this, 0.01, 0.9, xtol, rtol, 100, prob, n, eadxlgd, pd_c, *points, pool);
 }

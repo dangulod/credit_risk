@@ -19,6 +19,7 @@ public:
     Transition(std::vector<std::string> states, arma::mat matrix);
     Transition(const Transition & value) = delete;
     Transition(Transition && value) = default;
+    Transition & operator= ( Transition && ) = default;
     ~Transition() = default;
 
     pt::ptree to_ptree();
