@@ -30,6 +30,8 @@ namespace CreditRisk
         double CWI(arma::vec f, unsigned long id);
         double CWI(arma::vec f, double i);
 
+        void setIdio(arma::mat cor);
+
         double systematic(arma::vec f);
     };
 }

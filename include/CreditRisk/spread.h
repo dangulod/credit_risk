@@ -19,6 +19,7 @@ public:
     Spread(std::vector<std::string> states, std::vector<unsigned int> terms, arma::mat matrix);
     Spread(const Spread & value) = delete;
     Spread(Spread && value) = default;
+    Spread & operator= (Spread && ) = default;
     ~Spread() = default;
 
     pt::ptree to_ptree();

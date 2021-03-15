@@ -29,6 +29,7 @@ namespace CreditRisk
         CorMatrix(arma::mat cor);
         CorMatrix(const CorMatrix & value) = delete;
         CorMatrix(CorMatrix && value) = default;
+        CorMatrix & operator=(CorMatrix && ) = default;
         ~CorMatrix() = default;
 
         pt::ptree to_ptree();
